@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Retort Pro — Production Control System</title>
+<style>
+:root{
+  --bg:#050a0e;--bg2:#080f14;--bg3:#0c151d;--bg4:#111d26;
+  --border:#1a3040;--borderG:#0d6e3a;
+  --g:#00ff88;--g2:#00cc6a;--g3:#004d28;--gd:rgba(0,255,136,.08);
+  --b:#00b4ff;--b2:#0088cc;--bd:rgba(0,180,255,.08);
+  --r:#ff3355;--rd:rgba(255,51,85,.08);
+  --y:#ffcc00;--yd:rgba(255,204,0,.08);
+  --o:#ff7700;--od:rgba(255,119,0,.08);
+  --pu:#aa44ff;--pud:rgba(170,68,255,.08);
+  --gold:#f59e0b;
+  --text:#c8e6d0;--sub:#4a7060;--dim:#0a1a10;
+  --font:'JetBrains Mono','Fira Code','Courier New',monospace;
+  --sans:'Segoe UI',system-ui,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;min-height:100vh;}
+body{overflow-x:hidden;}
+
+/* scrollbar */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--bg2);}
+::-webkit-scrollbar-thumb{background:var(--g3);border-radius:2px;}
+
+/* LAYOUT */
+.app{display:flex;min-height:100vh;}
+.sidebar{width:240px;min-height:100vh;background:var(--bg2);border-right:1px solid var(--borderG);display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:200;transition:transform .25s;}
+.main{margin-left:240px;padding:20px;min-height:100vh;max-width:100%;}
+@media(max-width:768px){.sidebar{transform:translateX(-100%);}.sidebar.open{transform:translateX(0);box-shadow:4px 0 30px rgba(0,0,0,.8);}.main{margin-left:0;}}
+
+/* SIDEBAR */
+.sb-logo{padding:16px;border-bottom:1px solid var(--borderG);display:flex;align-items:center;gap:10px;}
+.sb-icon{width:38px;height:38px;border-radius:10px;background:var(--gd);border:1.5px solid var(--g3);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.sb-title{font-size:13px;font-weight:800;color:var(--text);letter-spacing:.5px;line-height:1.2;}
+.sb-sub{font-size:9px;color:var(--sub);margin-top:1px;font-family:var(--font);letter-spacing:1px;}
+.user-chip{margin:10px 12px 0;padding:8px 10px;border-radius:10px;border:1px solid var(--borderG);background:var(--gd);display:flex;align-items:center;gap:8px;}
+.user-av{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0;}
+.user-name{font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.user-role{font-size:9px;font-family:var(--font);letter-spacing:.5px;}
+.sb-nav{flex:1;padding:8px 0;overflow-y:auto;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:10px 14px;cursor:pointer;border-left:2.5px solid transparent;color:var(--sub);font-size:13px;font-weight:500;transition:all .15s;user-select:none;}
+.nav-item:hover{color:var(--g);background:var(--gd);}
+.nav-item.active{color:var(--g);background:var(--gd);border-left-color:var(--g);font-weight:700;}
+.nav-item .ni{font-size:14px;opacity:.7;}
+.nav-item.active .ni{opacity:1;}
+.nav-dot{margin-left:auto;width:5px;height:5px;border-radius:50%;background:var(--g);box-shadow:0 0 8px var(--g);}
+.sb-bottom{padding:12px;border-top:1px solid var(--borderG);}
+.plan-badge{padding:8px 10px;border-radius:9px;text-align:center;cursor:pointer;margin-bottom:8px;font-size:11px;font-weight:700;border:1px solid;}
+.logout-btn{width:100%;padding:8px;border-radius:9px;background:transparent;border:1px solid var(--border);color:var(--sub);cursor:pointer;font-size:12px;font-weight:700;font-family:var(--sans);}
+.logout-btn:hover{border-color:var(--r);color:var(--r);}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:10px;}
+.page-title{font-size:20px;font-weight:900;color:var(--text);display:flex;align-items:center;gap:8px;}
+.page-date{font-size:11px;color:var(--sub);margin-top:2px;font-family:var(--font);}
+.hamburger{display:none;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;font-size:16px;}
+@media(max-width:768px){.hamburger{display:block;}}
+
+/* CARDS */
+.card{background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px;}
+.card.glow-g{border-color:var(--g3);box-shadow:0 0 24px rgba(0,255,136,.06);}
+.card.glow-b{border-color:var(--b2);box-shadow:0 0 24px rgba(0,180,255,.06);}
+.card.glow-o{border-color:var(--o);box-shadow:0 0 24px rgba(255,119,0,.06);}
+.card.glow-r{border-color:var(--r);box-shadow:0 0 24px rgba(255,51,85,.06);}
+.card.glow-pu{border-color:var(--pu);box-shadow:0 0 24px rgba(170,68,255,.06);}
+.card.glow-gold{border-color:var(--gold);box-shadow:0 0 24px rgba(245,158,11,.06);}
+
+.sec-head{display:flex;align-items:center;gap:7px;margin-bottom:14px;padding-bottom:9px;border-bottom:1px solid var(--border);}
+.sec-head span{font-size:11px;font-weight:800;letter-spacing:2.5px;color:var(--b);text-transform:uppercase;font-family:var(--font);}
+
+/* GRID */
+.grid-2{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
+.grid-3{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;}
+.grid-4{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;}
+.row-2{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
+
+/* KPI CARDS */
+.kpi{position:relative;overflow:hidden;cursor:default;transition:transform .2s,box-shadow .2s;}
+.kpi:hover{transform:translateY(-3px);}
+.kpi-icon{position:absolute;right:-5px;top:-5px;font-size:32px;opacity:.07;}
+.kpi-bar{position:absolute;bottom:0;left:0;right:0;height:2.5px;border-radius:0 0 14px 14px;}
+.kpi-label{font-size:10px;letter-spacing:1.5px;font-weight:700;text-transform:uppercase;font-family:var(--font);margin-bottom:8px;}
+.kpi-val{font-size:36px;font-weight:900;line-height:1;font-family:var(--font);font-variant-numeric:tabular-nums;}
+.kpi-sub{font-size:10px;color:var(--sub);margin-top:4px;}
+
+/* BUTTONS */
+.btn{padding:9px 20px;border-radius:10px;border:none;cursor:pointer;font-weight:700;font-size:13px;font-family:var(--sans);transition:all .18s;display:inline-flex;align-items:center;gap:6px;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn-primary{background:linear-gradient(135deg,var(--b),#0066aa);color:#fff;box-shadow:0 4px 16px rgba(0,180,255,.2);}
+.btn-green{background:linear-gradient(135deg,var(--g),var(--g2));color:#000;box-shadow:0 4px 16px rgba(0,255,136,.2);}
+.btn-red{background:linear-gradient(135deg,var(--r),#cc0033);color:#fff;}
+.btn-yellow{background:linear-gradient(135deg,var(--y),#cc9900);color:#000;}
+.btn-purple{background:linear-gradient(135deg,var(--pu),#7700cc);color:#fff;}
+.btn-gold{background:linear-gradient(135deg,var(--gold),#b45309);color:#fff;}
+.btn-ghost{background:transparent;color:var(--sub);border:1px solid var(--border);}
+.btn-ghost:hover{color:var(--text);border-color:var(--g3);}
+.btn-sm{padding:5px 12px;font-size:11px;border-radius:8px;}
+
+/* FORM */
+.fld-label{font-size:10px;color:var(--sub);margin-bottom:5px;letter-spacing:.8px;text-transform:uppercase;font-weight:600;font-family:var(--font);}
+.inp{background:rgba(0,0,0,.5);border:1px solid var(--border);border-radius:9px;padding:9px 13px;color:var(--text);font-size:13px;width:100%;outline:none;box-sizing:border-box;font-family:var(--sans);transition:border-color .15s;}
+.inp:focus{border-color:var(--g);}
+.inp-wrap{position:relative;}
+.inp-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;opacity:.45;pointer-events:none;}
+.inp-wrap .inp{padding-left:36px;}
+select.inp{background:rgba(0,0,0,.5);}
+option{background:#0c151d;}
+
+/* BADGE */
+.badge{display:inline-block;border-radius:20px;padding:2px 10px;font-size:10px;font-weight:700;font-family:var(--font);}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tbl th{background:rgba(0,0,0,.4);color:var(--sub);padding:9px 11px;text-align:left;font-size:9px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);font-family:var(--font);}
+.tbl td{padding:9px 11px;border-bottom:1px solid rgba(26,48,64,.4);vertical-align:middle;}
+.tbl tr:hover td{background:rgba(0,255,136,.02);}
+.tbl-wrap{overflow-x:auto;}
+
+/* ALERTS */
+.alert{padding:10px 16px;border-radius:11px;margin-bottom:10px;display:flex;gap:10px;align-items:center;border:1px solid;}
+
+/* LIVE GRAPH */
+.graph-wrap{position:relative;width:100%;}
+
+/* TIMER */
+.timer-btn{padding:5px 13px;border-radius:8px;cursor:pointer;font-weight:700;font-size:11px;font-family:var(--font);letter-spacing:.5px;transition:all .18s;}
+.timer-running{font-family:var(--font);font-size:12px;padding:4px 10px;border-radius:7px;}
+
+/* PROGRESS BAR */
+.prog{height:5px;background:var(--dim);border-radius:3px;overflow:hidden;}
+.prog-inner{height:100%;border-radius:3px;transition:width .5s;}
+
+/* SECTIONS */
+.section{display:none;}
+.section.active{display:block;}
+
+/* LOGIN */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:16px;
+  background-image:radial-gradient(ellipse at 20% 50%,rgba(0,255,136,.06) 0%,transparent 50%),
+    radial-gradient(ellipse at 80% 20%,rgba(0,180,255,.05) 0%,transparent 50%);
+}
+.login-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(0,255,136,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,.03) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;}
+.login-card{width:100%;max-width:400px;background:var(--bg2);border:1px solid var(--borderG);border-radius:18px;padding:32px 28px;position:relative;z-index:1;box-shadow:0 0 60px rgba(0,255,136,.06),0 20px 60px rgba(0,0,0,.6);}
+.login-logo{text-align:center;margin-bottom:28px;}
+.logo-3d{display:flex;justify-content:center;margin-bottom:12px;}
+.login-title{font-size:22px;font-weight:900;color:var(--text);margin-bottom:3px;}
+.login-sub{font-size:12px;color:var(--sub);font-family:var(--font);letter-spacing:.5px;}
+.login-badge{display:inline-block;margin-top:10px;background:rgba(0,255,136,.08);border:1px solid var(--g3);border-radius:20px;padding:3px 14px;font-size:9px;color:var(--g);letter-spacing:2px;font-weight:700;font-family:var(--font);text-transform:uppercase;}
+.quick-login{margin-top:14px;background:rgba(0,0,0,.3);border-radius:10px;border:1px solid var(--border);padding:10px;}
+.ql-item{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:7px;cursor:pointer;transition:background .15s;}
+.ql-item:hover{background:rgba(0,255,136,.04);}
+.ql-av{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;}
+
+/* ONBOARDING */
+.ob-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:16px;background-image:radial-gradient(ellipse at 30% 50%,rgba(0,180,255,.06) 0%,transparent 50%);}
+.ob-card{width:100%;max-width:500px;background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:28px 24px;position:relative;z-index:1;}
+.steps-bar{display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:22px;}
+.step-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;font-family:var(--font);flex-shrink:0;transition:all .25s;}
+.step-line{flex:1;height:2px;max-width:32px;border-radius:1px;transition:background .25s;}
+.step-name{font-size:9px;margin-top:3px;font-family:var(--font);text-align:center;}
+
+/* SUBSCRIPTION CARDS */
+.plan-card{padding:22px;border-radius:16px;cursor:pointer;position:relative;overflow:hidden;transition:all .22s;border:1.5px solid var(--border);}
+.plan-card.selected{border-width:2px;transform:scale(1.02);}
+.plan-popular{position:absolute;top:10px;right:10px;background:linear-gradient(135deg,var(--pu),#5500aa);color:#fff;font-size:8px;font-weight:800;padding:3px 9px;border-radius:20px;letter-spacing:1px;font-family:var(--font);}
+.plan-active{position:absolute;background:var(--g);color:#000;font-size:8px;font-weight:800;padding:3px 9px;border-radius:20px;font-family:var(--font);}
+
+/* SETTINGS */
+.settings-tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--bg3);border-radius:12px;padding:4px;border:1px solid var(--border);}
+.st-tab{flex:1;padding:8px 10px;text-align:center;border-radius:9px;cursor:pointer;font-size:12px;font-weight:600;color:var(--sub);transition:all .15s;white-space:nowrap;}
+.st-tab.active{background:var(--gd);color:var(--g);font-weight:700;border:1px solid var(--g3);}
+
+/* UTILITY */
+.mono{font-family:var(--font);}
+.green{color:var(--g)}.blue{color:var(--b)}.red{color:var(--r)}.yellow{color:var(--y)}.orange{color:var(--o)}.purple{color:var(--pu)}.gold{color:var(--gold)}.sub{color:var(--sub);}
+.gap-8{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.gap-12{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+.full{width:100%;}
+.mt-12{margin-top:12px;}.mb-12{margin-bottom:12px;}.mb-16{margin-bottom:16px;}
+.text-c{text-align:center;}
+.fw-800{font-weight:800;}.fw-700{font-weight:700;}
+.err-msg{color:var(--r);font-size:11px;margin-top:4px;font-family:var(--font);}
+.ok-msg{color:var(--g);font-size:11px;margin-top:4px;font-family:var(--font);}
+.divider{height:1px;background:var(--border);margin:14px 0;}
+.icon-picker{display:flex;gap:7px;flex-wrap:wrap;}
+.icon-pick{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;border:2px solid var(--border);background:var(--dim);transition:all .15s;}
+.icon-pick.selected{border-color:var(--g);background:var(--gd);}
+.color-pick{width:28px;height:28px;border-radius:7px;cursor:pointer;transition:all .15s;border:3px solid transparent;}
+.color-pick.selected{border-color:#fff;box-shadow:0 0 10px;}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:199;backdrop-filter:blur(3px);}
+.overlay.show{display:block;}
+.ob-btn-row{display:flex;gap:10px;}
+input[type=range]{accent-color:var(--g);}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════ LOGIN ══════════════════════ -->
+<div id="loginPage" class="login-wrap">
+  <div class="login-grid"></div>
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-3d">
+        <svg width="64" height="64" viewBox="0 0 64 64" id="loginLogo3D">
+          <defs>
+            <radialGradient id="sg1" cx="38%" cy="32%"><stop offset="0%" stop-color="#00ff88" stop-opacity=".9"/><stop offset="100%" stop-color="#003322" stop-opacity=".3"/></radialGradient>
+            <filter id="sf1"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+          <ellipse cx="32" cy="32" rx="23" ry="9" fill="none" stroke="#00ff88" stroke-width=".6" stroke-opacity=".15" stroke-dasharray="3 5"/>
+          <ellipse cx="32" cy="32" rx="23" ry="9" fill="none" stroke="rgba(0,255,136,.1)" stroke-width=".6"/>
+          <ellipse cx="32" cy="32" rx="14" ry="5.5" fill="none" stroke="rgba(0,180,255,.1)" stroke-width=".6" transform="rotate(55 32 32)"/>
+          <circle id="ob1" cx="55" cy="32" r="2.5" fill="#00ff88" filter="url(#sf1)"/>
+          <circle id="ob2" cx="9" cy="32" r="2.5" fill="#00ff88" filter="url(#sf1)"/>
+          <circle id="ob3" cx="32" cy="9" r="2.5" fill="#00ff88" filter="url(#sf1)"/>
+          <circle cx="33" cy="33" r="7.5" fill="rgba(0,255,136,.08)" filter="url(#sf1)"/>
+          <circle cx="32" cy="32" r="7" fill="url(#sg1)" filter="url(#sf1)"/>
+          <circle cx="29.5" cy="29.5" r="2.5" fill="rgba(255,255,255,.25)"/>
+          <line x1="27" y1="31" x2="37" y2="31" stroke="rgba(0,255,136,.5)" stroke-width=".6"/>
+          <line x1="27" y1="32.5" x2="37" y2="32.5" stroke="rgba(0,255,136,.5)" stroke-width=".6"/>
+          <line x1="27" y1="34" x2="37" y2="34" stroke="rgba(0,255,136,.5)" stroke-width=".6"/>
+          <rect x="28.5" y="22.5" width="7" height="3" rx="1.5" fill="rgba(0,255,136,.2)" stroke="rgba(0,255,136,.4)" stroke-width=".5"/>
+        </svg>
+      </div>
+      <div id="loginCompanyName" class="login-title">Retort Pro</div>
+      <div id="loginCompanyTag" class="login-sub">Production Control System</div>
+      <div class="login-badge">ENTERPRISE EDITION</div>
+    </div>
+    <div class="mb-12">
+      <div class="fld-label">Username</div>
+      <div class="inp-wrap"><span class="inp-icon">▶</span><input class="inp" id="loginUser" placeholder="enter username" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    </div>
+    <div class="mb-16" style="position:relative">
+      <div class="fld-label">Password</div>
+      <div class="inp-wrap" style="position:relative">
+        <span class="inp-icon">🔒</span>
+        <input class="inp" id="loginPass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" style="padding-right:38px"/>
+        <button onclick="togglePw('loginPass',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--sub);font-size:13px;padding:0">👁</button>
+      </div>
+    </div>
+    <div id="loginErr" class="err-msg mb-12" style="display:none"></div>
+    <button class="btn btn-green full" onclick="doLogin()">SIGN IN ▶</button>
+    <div id="quickLoginBox" class="quick-login mt-12" style="display:none">
+      <div style="font-size:9px;color:var(--sub);margin-bottom:6px;letter-spacing:1px;font-family:var(--font);text-transform:uppercase">Quick Login</div>
+      <div id="quickLoginList"></div>
+    </div>
+    <div style="margin-top:14px;text-align:center;font-size:11px;color:var(--sub)">
+      New company? <span style="color:var(--b);cursor:pointer;font-weight:700;border-bottom:1px solid rgba(0,180,255,.4)" onclick="showPage('onboarding')">Register Karo →</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ ONBOARDING ══════════════════════ -->
+<div id="onboardingPage" style="display:none" class="ob-wrap">
+  <div class="ob-card">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:20px;font-weight:900;color:var(--text)">Retort Pro Enterprise</div>
+      <div style="font-size:11px;color:var(--sub);margin-top:3px;font-family:var(--font)">Company Register Karo — Free Mein Shuru Karo</div>
+    </div>
+    <!-- Steps bar -->
+    <div class="steps-bar" id="stepsBar"></div>
+    <!-- Steps content -->
+    <div id="obContent"></div>
+    <div style="margin-top:16px;text-align:center;font-size:11px;color:var(--sub)">
+      Already account hai? <span style="color:var(--g);cursor:pointer;font-weight:700" onclick="showPage('login')">Login Karo →</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ MAIN APP ══════════════════════ -->
+<div id="appPage" style="display:none" class="app">
+  <div id="overlay" class="overlay" onclick="closeSidebar()"></div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-icon" id="sbIcon">⚙</div>
+      <div>
+        <div class="sb-title" id="sbName">Retort Pro</div>
+        <div class="sb-sub" id="sbTag">PRODUCTION SYSTEM</div>
+      </div>
+    </div>
+    <div class="user-chip">
+      <div class="user-av" id="userAv" style="background:var(--gd);color:var(--g);border:1px solid var(--g3)">A</div>
+      <div>
+        <div class="user-name" id="userName">Admin</div>
+        <div class="user-role mono" id="userRole" style="color:var(--g)">Owner</div>
+      </div>
+    </div>
+    <div class="sb-nav" id="navList"></div>
+    <div class="sb-bottom">
+      <div class="plan-badge" id="planBadge" onclick="navigate('plans')" style="border-color:var(--g3);color:var(--g);background:var(--gd)">⚡ Pro Plan — Upgrade</div>
+      <button class="logout-btn" onclick="doLogout()">🚪 Logout</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <button class="hamburger" onclick="toggleSidebar()">☰</button>
+      </div>
+      <div>
+        <div class="page-title" id="pageTitle">📊 Dashboard</div>
+        <div class="page-date" id="pageDate"></div>
+      </div>
+      <div id="topbarRight"></div>
+    </div>
+
+    <!-- PAGES -->
+    <div id="pg-dashboard" class="section active"></div>
+    <div id="pg-batch" class="section"></div>
+    <div id="pg-reports" class="section"></div>
+    <div id="pg-share" class="section"></div>
+    <div id="pg-stock" class="section"></div>
+    <div id="pg-ai" class="section"></div>
+    <div id="pg-f0" class="section"></div>
+    <div id="pg-plans" class="section"></div>
+    <div id="pg-settings" class="section"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+const LS={get:(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}}};
+const uid=()=>Math.random().toString(36).slice(2,10);
+
+let STATE={
+  user:null,company:null,plan:LS.get('rp_plan','pro'),
+  batches:null,ranges:null,currentPage:'dashboard',
+  tempData:[],liveInterval:null,clockInterval:null,
+  obStep:0,obMethod:'email',obContact:'',obOTP:'',obSentOTP:'',
+  obCompany:{name:'',tagline:'',city:'',industry:'Food Processing',icon:'⚙',color:'#00ff88'},
+  obOwner:{name:'',username:'',password:''},
+  settingsTab:'company',batchEditIdx:null,
+};
+
+const PLANS=[
+  {id:'free',name:'Free',price:0,label:'Free',color:'#4a7060',icon:'🆓',features:['1 User','10 Batches/mo','Basic Dashboard','No AI','No Reports']},
+  {id:'basic',name:'Basic',price:999,label:'₹999/mo',color:'#00b4ff',icon:'⚡',features:['3 Users','Unlimited Batches','Email Reports','Basic AI','F0 Alerts']},
+  {id:'pro',name:'Pro',price:2499,label:'₹2,499/mo',color:'#aa44ff',icon:'🚀',popular:true,features:['10 Users','All Basic Features','AI Assistant','WhatsApp Reports','Custom Branding','Priority Support']},
+  {id:'enterprise',name:'Enterprise',price:6999,label:'₹6,999/mo',color:'#f59e0b',icon:'👑',features:['Unlimited Users','Everything Pro','Dedicated Support','API Access','SLA 99.9%','Custom Dev']},
+];
+
+const NAVMAP={
+  Owner:   [{id:'dashboard',l:'Dashboard',i:'◈'},{id:'batch',l:'Batch Entry',i:'⊞'},{id:'reports',l:'Reports',i:'≡'},{id:'share',l:'Share Report',i:'↗'},{id:'stock',l:'Stock',i:'▦'},{id:'ai',l:'AI Assistant',i:'◎'},{id:'f0',l:'F0 Settings',i:'⚗'},{id:'plans',l:'Subscription',i:'$'},{id:'settings',l:'Settings',i:'⚙'}],
+  Admin:   [{id:'dashboard',l:'Dashboard',i:'◈'},{id:'batch',l:'Batch Entry',i:'⊞'},{id:'reports',l:'Reports',i:'≡'},{id:'share',l:'Share Report',i:'↗'},{id:'stock',l:'Stock',i:'▦'},{id:'ai',l:'AI Assistant',i:'◎'},{id:'f0',l:'F0 Settings',i:'⚗'},{id:'settings',l:'Settings',i:'⚙'}],
+  Supervisor:[{id:'dashboard',l:'Dashboard',i:'◈'},{id:'batch',l:'Batch Entry',i:'⊞'},{id:'reports',l:'Reports',i:'≡'},{id:'share',l:'Share Report',i:'↗'},{id:'stock',l:'Stock',i:'▦'},{id:'f0',l:'F0 Settings',i:'⚗'}],
+  Operator: [{id:'dashboard',l:'Dashboard',i:'◈'},{id:'batch',l:'Batch Entry',i:'⊞'}],
+};
+const ICONS=['⚙','🏭','🌊','🔥','❄️','⚗','🧪','🏪','🌾','🐟','🥫','🎯'];
+const COLORS=['#00ff88','#00b4ff','#aa44ff','#f59e0b','#ff7700','#ff3355','#00ffcc','#ff66cc','#00aaff','#ffaa00'];
+const DEF_RANGES=[{product:'Corn',min:18,max:25},{product:'Sardines',min:6,max:10}];
+const DEF_BATCHES=[
+  {id:uid(),date:'2025-04-10',batchNo:'B-001',product:'Corn',quantity:'250',retortNo:'R-1',retortStart:'2025-04-10T08:00:00.000Z',retortEnd:'2025-04-10T09:45:00.000Z__END',comeUpStart:'2025-04-10T08:00:00.000Z',comeUpEnd:'2025-04-10T08:20:00.000Z',holdingStart:'2025-04-10T08:20:00.000Z',holdingEnd:'2025-04-10T09:10:00.000Z',coolingStart:'2025-04-10T09:10:00.000Z',coolingEnd:'2025-04-10T09:45:00.000Z',temperature:'121',pressure:'1.2',f0:'22',status:'Completed',remarks:''},
+  {id:uid(),date:'2025-04-11',batchNo:'B-002',product:'Sardines',quantity:'180',retortNo:'R-2',retortStart:'2025-04-11T07:30:00.000Z',retortEnd:'',comeUpStart:'2025-04-11T07:30:00.000Z',comeUpEnd:'',holdingStart:'',holdingEnd:'',coolingStart:'',coolingEnd:'',temperature:'118',pressure:'1.1',f0:'4.5',status:'Running',remarks:''},
+];
+
+function rcColor(r){return r==='Owner'?'#f59e0b':r==='Admin'?'#aa44ff':r==='Supervisor'?'#00b4ff':'#00ff88';}
+function getZone(val,product){
+  const f=parseFloat(val);if(isNaN(f)||!val) return null;
+  const r=(STATE.ranges||[]).find(r=>r.product.toLowerCase()===(product||'').toLowerCase());
+  if(!r) return{zone:'unknown',color:'#4a7060',label:'Range not set',icon:'?'};
+  if(f<r.min) return{zone:'risk',color:'#ff3355',label:`RISK — below ${r.min}`,icon:'⚠'};
+  if(f>r.max) return{zone:'overheat',color:'#ffcc00',label:`OVERHEAT — above ${r.max}`,icon:'🔥'};
+  return{zone:'safe',color:'#00ff88',label:`Safe (${r.min}–${r.max})`,icon:'✓'};
+}
+function fmtT(d){if(!d) return '—';return new Date(d).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+function fmtD(d){if(!d) return '—';return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
+function strip(s){return(s||'').replace('__END','');}
+function elapStr(s,e){
+  if(!s) return null;
+  const ms=(e?new Date(e):new Date())-new Date(s);
+  if(ms<0) return '0s';
+  const sc=Math.floor(ms/1000)%60,m=Math.floor(ms/60000)%60,h=Math.floor(ms/3600000);
+  return h>0?`${h}h ${m}m`:m>0?`${m}m ${sc}s`:`${sc}s`;
+}
+function togglePw(id,btn){const el=document.getElementById(id);el.type=el.type==='password'?'text':'password';btn.textContent=el.type==='password'?'👁':'🙈';}
+function showPage(p){
+  document.getElementById('loginPage').style.display=p==='login'?'flex':'none';
+  document.getElementById('onboardingPage').style.display=p==='onboarding'?'flex':'none';
+  document.getElementById('appPage').style.display=p==='app'?'flex':'none';
+  if(p==='login') renderLogin();
+  if(p==='onboarding'){STATE.obStep=0;renderOnboarding();}
+}
+function closeSidebar(){const s=document.getElementById('sidebar');s.classList.remove('open');document.getElementById('overlay').classList.remove('show');}
+function toggleSidebar(){const s=document.getElementById('sidebar');s.classList.toggle('open');document.getElementById('overlay').classList.toggle('show');}
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+function init(){
+  if(LS.get('rp_users',[]).length===0){
+    const cid=uid();
+    LS.set('rp_companies',[{id:cid,name:'Demo Foods Ltd.',tagline:'Quality Since 1998',city:'Karachi',industry:'Food Processing',icon:'⚙',color:'#00ff88'}]);
+    LS.set('rp_users',[
+      {id:uid(),username:'owner',password:'owner123',displayName:'Company Owner',role:'Owner',companyId:cid},
+      {id:uid(),username:'admin',password:'admin123',displayName:'Admin User',role:'Admin',companyId:cid},
+      {id:uid(),username:'operator',password:'op123',displayName:'Operator',role:'Operator',companyId:cid},
+    ]);
+  }
+  showPage('login');
+  setInterval(()=>{const d=document.getElementById('pageDate');if(d)d.textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});},1000);
+}
+
+// ═══════════════════════════════════════════
+//  LOGIN
+// ═══════════════════════════════════════════
+function renderLogin(){
+  const users=LS.get('rp_users',[]);
+  const box=document.getElementById('quickLoginBox');
+  const list=document.getElementById('quickLoginList');
+  if(users.length>0){
+    box.style.display='block';
+    list.innerHTML=users.slice(0,4).map(u=>`
+      <div class="ql-item" onclick="document.getElementById('loginUser').value='${u.username}';document.getElementById('loginPass').value='${u.password}'">
+        <div class="ql-av" style="background:${rcColor(u.role)}22;color:${rcColor(u.role)}">${(u.displayName||u.username).charAt(0).toUpperCase()}</div>
+        <span style="font-size:12px;color:var(--text);flex:1">@${u.username}</span>
+        <span class="badge" style="background:${rcColor(u.role)}18;color:${rcColor(u.role)};border:1px solid ${rcColor(u.role)}30">${u.role}</span>
+      </div>`).join('');
+  }
+}
+function doLogin(){
+  const u=document.getElementById('loginUser').value.trim();
+  const p=document.getElementById('loginPass').value;
+  const users=LS.get('rp_users',[]);
+  const found=users.find(x=>x.username.toLowerCase()===u.toLowerCase()&&x.password===p);
+  if(!found){const e=document.getElementById('loginErr');e.style.display='block';e.textContent='❌ Galat username ya password!';return;}
+  const companies=LS.get('rp_companies',[]);
+  const co=companies.find(c=>c.id===found.companyId)||{id:'demo',name:'Retort Pro',tagline:'System',city:'',icon:'⚙',color:'#00ff88'};
+  STATE.user=found;STATE.company=co;
+  STATE.batches=LS.get(`rp_bat_${co.id}`,DEF_BATCHES);
+  STATE.ranges=LS.get(`rp_rng_${co.id}`,DEF_RANGES);
+  STATE.plan=LS.get('rp_plan','pro');
+  initApp();showPage('app');navigate('dashboard');
+}
+function doLogout(){STATE.user=null;STATE.company=null;if(STATE.liveInterval)clearInterval(STATE.liveInterval);showPage('login');}
+
+// ═══════════════════════════════════════════
+//  APP INIT
+// ═══════════════════════════════════════════
+function initApp(){
+  const u=STATE.user,co=STATE.company;
+  document.getElementById('sbIcon').textContent=co.icon||'⚙';
+  document.getElementById('sbIcon').style.borderColor=(co.color||'#00ff88')+'44';
+  document.getElementById('sbIcon').style.background=(co.color||'#00ff88')+'14';
+  document.getElementById('sbName').textContent=co.name||'Retort Pro';
+  document.getElementById('sbTag').textContent=(co.tagline||'PRODUCTION SYSTEM').toUpperCase();
+  const av=document.getElementById('userAv');
+  av.textContent=(u.displayName||u.username).charAt(0).toUpperCase();
+  av.style.background=rcColor(u.role)+'22';av.style.color=rcColor(u.role);av.style.border=`1px solid ${rcColor(u.role)}44`;
+  document.getElementById('userName').textContent=u.displayName||u.username;
+  const roleEl=document.getElementById('userRole');roleEl.textContent=u.role;roleEl.style.color=rcColor(u.role);
+  renderNav();updatePlanBadge();
+  document.getElementById('topbarRight').innerHTML=`<span class="badge" style="background:${rcColor(u.role)}18;color:${rcColor(u.role)};border:1px solid ${rcColor(u.role)}30;font-size:11px;padding:4px 12px">${u.displayName||u.username} · ${u.role}</span>`;
+  initLiveTemp();
+}
+function renderNav(){
+  const nav=NAVMAP[STATE.user?.role]||NAVMAP.Operator;
+  document.getElementById('navList').innerHTML=nav.map(n=>`
+    <div class="nav-item ${STATE.currentPage===n.id?'active':''}" onclick="navigate('${n.id}')">
+      <span class="ni mono">${n.i}</span>${n.l}
+      ${STATE.currentPage===n.id?'<div class="nav-dot"></div>':''}
+    </div>`).join('');
+}
+function updatePlanBadge(){
+  const p=PLANS.find(x=>x.id===STATE.plan)||PLANS[0];
+  const b=document.getElementById('planBadge');
+  b.textContent=`${p.icon} ${p.name} — Upgrade`;
+  b.style.color=p.color;b.style.borderColor=p.color+'44';b.style.background=p.color+'10';
+}
+function navigate(page){
+  STATE.currentPage=page;
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(`pg-${page}`)?.classList.add('active');
+  const nav=NAVMAP[STATE.user?.role]||NAVMAP.Operator;
+  const pi=nav.find(n=>n.id===page)||nav[0];
+  document.getElementById('pageTitle').textContent=`${pi?.i||''} ${pi?.l||''}`;
+  renderNav();closeSidebar();
+  const renders={dashboard:renderDashboard,batch:renderBatch,reports:renderReports,share:renderShare,stock:renderStock,ai:renderAI,f0:renderF0,plans:renderPlans,settings:renderSettings};
+  renders[page]?.();
+}
+function saveBatches(){LS.set(`rp_bat_${STATE.company.id}`,STATE.batches);}
+function saveRanges(){LS.set(`rp_rng_${STATE.company.id}`,STATE.ranges);}
+
+// ═══════════════════════════════════════════
+//  LIVE TEMP
+// ═══════════════════════════════════════════
+function initLiveTemp(){
+  const base=parseFloat(STATE.batches?.slice(-1)[0]?.temperature)||121;
+  STATE.tempData=Array.from({length:30},(_,i)=>({temp:base+Math.sin(i*.4)*3+(Math.random()-.5)*2,pres:1.1+Math.sin(i*.3)*.05+(Math.random()-.5)*.02}));
+  if(STATE.liveInterval) clearInterval(STATE.liveInterval);
+  STATE.liveInterval=setInterval(()=>{
+    const last=STATE.tempData[STATE.tempData.length-1];
+    STATE.tempData=[...STATE.tempData.slice(-49),{temp:Math.max(100,Math.min(135,last.temp+(Math.random()-.48)*1.5)),pres:Math.max(.8,Math.min(1.5,last.pres+(Math.random()-.48)*.02))}];
+    if(STATE.currentPage==='dashboard') updateLiveGraph();
+  },1500);
+}
+function updateLiveGraph(){
+  const el=document.getElementById('liveGraph');
+  if(!el) return;
+  const d=STATE.tempData,H=130,W=600;
+  const temps=d.map(x=>x.temp),press=d.map(x=>x.pres);
+  const minT=Math.min(...temps)-2,maxT=Math.max(...temps)+2,rT=maxT-minT||1;
+  const minP=Math.min(...press)-.05,maxP=Math.max(...press)+.05,rP=maxP-minP||1;
+  const tPts=temps.map((v,i)=>`${(i/(temps.length-1))*W},${H-4-((v-minT)/rT)*(H-8)}`).join(' ');
+  const pPts=press.map((v,i)=>`${(i/(press.length-1))*W},${H-4-((v-minP)/rP)*(H-8)}`).join(' ');
+  const lastT=temps[temps.length-1].toFixed(1);
+  const lastP=press[press.length-1].toFixed(3);
+  const dotY=H-4-((temps[temps.length-1]-minT)/rT)*(H-8);
+  const lineY=H-4-((121-minT)/rT)*(H-8);
+  const trend=temps.length>5?(temps[temps.length-1]>temps[temps.length-5]?'↑↑':'↓↓'):'——';
+  el.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:7px;height:7px;border-radius:50%;background:var(--g);box-shadow:0 0 8px var(--g)"></div>
+        <span class="mono" style="font-size:10px;color:var(--b);letter-spacing:2px">LIVE TEMPERATURE & PRESSURE</span>
+      </div>
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+        <div style="text-align:center">
+          <div class="mono" style="font-size:24px;font-weight:900;color:var(--o);line-height:1">${lastT}°C</div>
+          <div class="mono" style="font-size:9px;color:var(--sub)">TEMP ${trend}</div>
+        </div>
+        <div style="width:1px;height:30px;background:var(--border)"></div>
+        <div style="text-align:center">
+          <div class="mono" style="font-size:24px;font-weight:900;color:#00eeff;line-height:1">${lastP}</div>
+          <div class="mono" style="font-size:9px;color:var(--sub)">bar</div>
+        </div>
+      </div>
+    </div>
+    <div style="position:relative;height:${H}px">
+      <svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+        ${[.25,.5,.75].map(f=>`<line x1="0" y1="${H*f}" x2="${W}" y2="${H*f}" stroke="rgba(0,255,136,0.05)" stroke-width="1"/>`).join('')}
+        <polygon points="0,${H} ${pPts} ${W},${H}" fill="rgba(0,238,255,0.04)"/>
+        <polyline points="${pPts}" fill="none" stroke="#00eeff" stroke-width="1.5" stroke-opacity=".5" stroke-dasharray="5 3"/>
+        <polygon points="0,${H} ${tPts} ${W},${H}" fill="rgba(255,119,0,0.06)"/>
+        <polyline points="${tPts}" fill="none" stroke="var(--o)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="${W}" cy="${dotY}" r="4.5" fill="var(--o)" stroke="rgba(255,119,0,.3)" stroke-width="5"/>
+        <line x1="0" y1="${lineY}" x2="${W}" y2="${lineY}" stroke="var(--g)" stroke-width="1" stroke-dasharray="6 3" stroke-opacity=".5"/>
+        <text x="4" y="${Math.max(10,lineY-4)}" fill="var(--g)" font-size="8" opacity=".7">121°C Target</text>
+      </svg>
+      <div style="position:absolute;bottom:0;right:0;display:flex;gap:12px;font-size:10px">
+        <span style="color:var(--o);display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:2px;background:var(--o);border-radius:1px"></span>Temperature</span>
+        <span style="color:#00eeff;display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:0;border-top:2px dashed #00eeff"></span>Pressure</span>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════
+function renderDashboard(){
+  const b=STATE.batches||[];const co=STATE.company||{};const u=STATE.user||{};
+  const total=b.length,comp=b.filter(x=>x.status==='Completed').length,run=b.filter(x=>x.status==='Running').length,
+    fail=b.filter(x=>x.status==='Failed').length,qty=b.reduce((s,x)=>s+(parseFloat(x.quantity)||0),0);
+  const alerts=b.filter(x=>{const z=getZone(x.f0,x.product);return z&&z.zone!=='safe'&&z.zone!=='unknown';});
+  const active=b.filter(x=>x.status==='Running');
+  const chart=b.slice(-8);
+  const p=PLANS.find(x=>x.id===STATE.plan)||PLANS[0];
+
+  document.getElementById('pg-dashboard').innerHTML=`
+    <!-- HERO -->
+    <div style="background:linear-gradient(135deg,#060f18,#04090f);border:1px solid var(--borderG);border-radius:18px;padding:22px 26px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 0 40px rgba(0,255,136,.04),0 8px 40px rgba(0,0,0,.5)">
+      <div style="position:absolute;right:-50px;top:-50px;width:220px;height:220px;border-radius:50%;background:rgba(0,255,136,.03);pointer-events:none"></div>
+      <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,255,136,.3),transparent)"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;position:relative">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div style="width:6px;height:6px;border-radius:50%;background:var(--g);box-shadow:0 0 8px var(--g)"></div>
+            <span class="mono" style="font-size:9px;color:var(--g);letter-spacing:3px">${co.name||'RETORT PRO'} — LIVE OPERATIONS</span>
+          </div>
+          <div id="heroClockDash" class="mono" style="font-size:42px;font-weight:900;color:var(--text);line-height:1;letter-spacing:-2px">${new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>
+          <div class="mono" style="font-size:11px;color:var(--sub);margin-top:4px">${new Date().toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})}</div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+            <span class="badge" style="background:${p.color}18;color:${p.color};border:1px solid ${p.color}35;font-size:11px;padding:4px 12px">${p.icon} ${p.name} Plan</span>
+            <span class="badge" style="background:${rcColor(u.role)}18;color:${rcColor(u.role)};border:1px solid ${rcColor(u.role)}35;font-size:11px;padding:4px 12px">${u.role}</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div style="width:52px;height:52px;border-radius:15px;background:${co.color||'#00ff88'}14;border:2px solid ${co.color||'#00ff88'}40;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 20px ${co.color||'#00ff88'}20">${co.icon||'⚙'}</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            ${[{v:run,l:'Active',c:'#00ff88'},{v:alerts.length,l:'Alerts',c:'#ff3355'}].map(s=>`
+            <div style="background:${s.c}0e;border:1px solid ${s.c}28;border-radius:10px;padding:8px 16px;text-align:center">
+              <div class="mono" style="font-size:22px;font-weight:900;color:${s.c};line-height:1">${s.v}</div>
+              <div class="mono" style="font-size:9px;color:var(--sub);letter-spacing:1px;margin-top:2px">${s.l}</div>
+            </div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI GRID -->
+    <div class="grid-4 mb-16">
+      ${[
+        {l:'TOTAL BATCHES',v:total,c:'#00b4ff',i:'▣',sub:`${comp} completed`},
+        {l:'COMPLETED',v:comp,c:'#00ff88',i:'✓',sub:'Successful runs'},
+        {l:'RUNNING',v:run,c:'#ff7700',i:'▶',sub:'Live batches'},
+        {l:'FAILED',v:fail,c:'#ff3355',i:'✕',sub:'Need review'},
+        {l:'PRODUCTION',v:qty.toFixed(0)+'kg',c:'#aa44ff',i:'▦',sub:'Total output'},
+      ].map(s=>`
+      <div class="card kpi" style="border-color:${s.c}22;box-shadow:0 4px 20px ${s.c}0a">
+        <div class="kpi-icon">${s.i}</div>
+        <div class="kpi-bar" style="background:linear-gradient(90deg,${s.c},transparent)"></div>
+        <div class="kpi-label" style="color:${s.c}">${s.i} ${s.l}</div>
+        <div class="kpi-val" style="color:${s.c}">${s.v}</div>
+        <div class="kpi-sub">${s.sub}</div>
+      </div>`).join('')}
+    </div>
+
+    <!-- LIVE TEMP -->
+    <div class="card glow-b mb-16" id="liveGraph"></div>
+
+    <!-- ALERTS -->
+    ${alerts.map(b=>{const z=getZone(b.f0,b.product);return`
+    <div class="alert mb-12" style="background:${z.color}0a;border-color:${z.color}30;box-shadow:0 0 16px ${z.color}14">
+      <span style="font-size:18px">${z.icon}</span>
+      <span><span style="color:${z.color};font-weight:700">${b.product} — ${b.batchNo}: </span><span style="color:var(--text);font-size:13px">F0 = <b>${b.f0}</b> — ${z.label}</span></span>
+    </div>`;}).join('')}
+
+    <!-- CHARTS ROW -->
+    <div class="row-2 mb-16">
+      <!-- F0 BAR CHART -->
+      <div class="card glow-b">
+        <div class="sec-head"><span>F0 TREND — LAST ${chart.length} BATCHES</span></div>
+        ${chart.length===0?`<div style="color:var(--sub);text-align:center;padding:28px">No batch data yet.</div>`:`
+        <div style="display:flex;align-items:flex-end;gap:5px;height:90px;perspective:300px">
+          ${chart.map((b2,i)=>{const f=parseFloat(b2.f0)||0,z2=getZone(b2.f0,b2.product),c=z2?z2.color:'#4a7060',maxV=Math.max(...chart.map(x=>parseFloat(x.f0)||0),30),h=Math.max(10,(f/maxV)*82);return`
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+            <span class="mono" style="font-size:9px;color:${c};font-weight:800">${f}</span>
+            <div style="width:100%;height:${h}px;background:${c};border-radius:4px 4px 0 0;opacity:.85;box-shadow:0 0 10px ${c}50;position:relative">
+              <div style="position:absolute;right:-3px;top:2px;bottom:0;width:3px;background:${c}55;border-radius:0 2px 0 0;transform:skewY(-45deg);transform-origin:left top"></div>
+            </div>
+            <span class="mono" style="font-size:8px;color:var(--sub);max-width:30px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b2.batchNo}</span>
+          </div>`;}).join('')}
+        </div>
+        <div style="display:flex;gap:12px;margin-top:10px">
+          ${[{c:'#ff3355',l:'Risk'},{c:'#00ff88',l:'Safe'},{c:'#ffcc00',l:'Overheat'}].map(x=>`<span style="font-size:10px;color:${x.c};display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;border-radius:50%;background:${x.c};display:inline-block"></span>${x.l}</span>`).join('')}
+        </div>`}
+      </div>
+
+      <!-- ACTIVE RETORTS -->
+      <div class="card glow-o">
+        <div class="sec-head"><span>ACTIVE RETORTS (${active.length})</span></div>
+        ${active.length===0?`<div style="text-align:center;padding:28px;color:var(--sub)"><div style="font-size:28px;margin-bottom:8px;opacity:.4">⚙</div>No active batches</div>`:
+        active.map(b2=>{const z2=getZone(b2.f0,b2.product);return`
+        <div style="background:rgba(255,119,0,.06);border:1px solid rgba(255,119,0,.2);border-radius:12px;padding:12px 14px;margin-bottom:10px;position:relative;overflow:hidden">
+          <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--o),transparent)"></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;flex-wrap:wrap;gap:4px">
+            <span class="mono" style="color:var(--b);font-weight:800;font-size:13px">${b2.batchNo}</span>
+            <span class="badge" style="background:rgba(255,119,0,.15);color:var(--o);border:1px solid rgba(255,119,0,.3)">● LIVE</span>
+          </div>
+          <div style="font-size:11px;color:var(--sub);margin-bottom:5px">🏭 ${b2.product} | ⚙ ${b2.retortNo} | 📦 ${b2.quantity}kg</div>
+          ${b2.retortStart?`<div class="mono" style="font-size:11px;color:var(--g);margin-bottom:4px">⏱ ${elapStr(strip(b2.retortStart))}</div>`:''}
+          ${z2?`<span class="badge" style="background:${z2.color}14;color:${z2.color};border:1px solid ${z2.color}30;font-size:11px">F0: ${b2.f0||'—'} — ${z2.label}</span>`:''}
+        </div>`;}).join('')}
+      </div>
+    </div>
+
+    <!-- F0 GAUGES -->
+    ${(STATE.ranges||[]).length>0?`
+    <div class="card glow-b mb-16">
+      <div class="sec-head"><span>F0 SAFETY MONITOR — PRODUCT WISE</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px">
+        ${(STATE.ranges||[]).map(r=>{
+          const pb=(STATE.batches||[]).filter(x=>x.product.toLowerCase()===r.product.toLowerCase());
+          const lb=pb[pb.length-1];const lf=lb?parseFloat(lb.f0)||0:null;
+          const z2=lf!==null?getZone(lf,r.product):null;
+          const pct=pb.length>0?(pb.filter(x=>getZone(x.f0,x.product)?.zone==='safe').length/pb.length*100).toFixed(0):0;
+          const MAXD=Math.max(r.max*1.5,30);
+          const gaugeColor=z2?z2.color:'#4a7060';
+          const pct2=lf?Math.min(lf/MAXD*100,100):0;
+          return`<div style="background:linear-gradient(135deg,#060f18,#04090f);border:1px solid ${gaugeColor}28;border-radius:14px;padding:16px;position:relative;overflow:hidden">
+            <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,${gaugeColor},transparent)"></div>
+            <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:2px">🏷 ${r.product}</div>
+            <div class="mono" style="font-size:10px;color:var(--sub);margin-bottom:10px">Safe: ${r.min} – ${r.max}</div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="text-align:center">
+                <div class="mono" style="font-size:32px;font-weight:900;color:${gaugeColor};line-height:1">${lf!==null?lf.toFixed(1):'—'}</div>
+                <div class="mono" style="font-size:8px;color:var(--sub);margin-top:2px">F0 VALUE</div>
+                <div style="margin-top:6px;height:4px;width:60px;background:var(--dim);border-radius:2px;overflow:hidden">
+                  <div style="height:100%;width:${pct2}%;background:${gaugeColor};border-radius:2px;box-shadow:0 0 6px ${gaugeColor}"></div>
+                </div>
+              </div>
+              <div>
+                ${z2?`<span class="badge" style="background:${z2.color}14;color:${z2.color};border:1px solid ${z2.color}30;font-size:11px">${z2.icon} ${z2.zone}</span>`:'<span style="color:var(--sub);font-size:11px">No data</span>'}
+                ${pb.length>0?`<div style="margin-top:8px;font-size:10px;color:var(--sub)">${pct}% Safe Rate<div class="prog mt-12" style="width:80px"><div class="prog-inner" style="width:${pct}%;background:linear-gradient(90deg,var(--g),var(--b))"></div></div></div>`:''}
+              </div>
+            </div>
+          </div>`;}).join('')}
+      </div>
+    </div>`:''}
+
+    <!-- RECENT TABLE -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div class="sec-head" style="margin-bottom:0"><span>RECENT BATCHES</span></div>
+        <button class="btn btn-ghost btn-sm" onclick="navigate('batch')">View All →</button>
+      </div>
+      ${b.length===0?`<div style="text-align:center;padding:32px;color:var(--sub)"><div style="font-size:28px;margin-bottom:8px">⊞</div>No batches yet.</div>`:`
+      <div class="tbl-wrap"><table class="tbl"><thead><tr>
+        ${['Date','Batch','Product','Qty','F0','Zone','Status'].map(h=>`<th>${h}</th>`).join('')}
+      </tr></thead><tbody>
+        ${[...b].reverse().slice(0,8).map(b2=>{const z2=getZone(b2.f0,b2.product);return`<tr>
+          <td style="color:var(--sub);font-size:11px">${fmtD(b2.date)}</td>
+          <td><span class="mono" style="color:var(--b);font-weight:700">${b2.batchNo}</span></td>
+          <td>${b2.product}</td>
+          <td style="color:var(--sub)">${b2.quantity}kg</td>
+          <td><span class="mono" style="font-weight:800;font-size:14px;color:${z2?z2.color:'var(--sub)'}">${b2.f0||'—'}</span></td>
+          <td>${z2?`<span class="badge" style="background:${z2.color}14;color:${z2.color};border:1px solid ${z2.color}28">${z2.icon} ${z2.zone}</span>`:'—'}</td>
+          <td><span class="badge" style="background:${b2.status==='Completed'?'rgba(0,255,136,.12)':b2.status==='Failed'?'rgba(255,51,85,.12)':'rgba(255,119,0,.12)'};color:${b2.status==='Completed'?'var(--g)':b2.status==='Failed'?'var(--r)':'var(--o)'};border:1px solid ${b2.status==='Completed'?'rgba(0,255,136,.25)':b2.status==='Failed'?'rgba(255,51,85,.25)':'rgba(255,119,0,.25)'}">${b2.status}</span></td>
+        </tr>`;}).join('')}
+      </tbody></table></div>`}
+    </div>`;
+
+  // Clock update
+  if(STATE.clockInterval) clearInterval(STATE.clockInterval);
+  STATE.clockInterval=setInterval(()=>{const el=document.getElementById('heroClockDash');if(el)el.textContent=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});},1000);
+  updateLiveGraph();
+}
+
+// ═══════════════════════════════════════════
+//  BATCH ENTRY
+// ═══════════════════════════════════════════
+const emptyB=()=>({id:uid(),date:new Date().toISOString().slice(0,10),batchNo:'',product:'',quantity:'',retortNo:'',retortStart:'',retortEnd:'',comeUpStart:'',comeUpEnd:'',holdingStart:'',holdingEnd:'',coolingStart:'',coolingEnd:'',temperature:'',pressure:'',f0:'',status:'Running',remarks:''});
+
+function renderBatch(){
+  const batches=STATE.batches||[];
+  const form=STATE.batchForm||emptyB();
+  const dur=form.retortStart&&form.retortEnd?elapStr(strip(form.retortStart),strip(form.retortEnd)):null;
+  const z=getZone(form.f0,form.product);
+  document.getElementById('pg-batch').innerHTML=`
+  <div class="card glow-${STATE.batchEditIdx!==null?'gold':'b'}">
+    <div class="sec-head"><span>${STATE.batchEditIdx!==null?'✏ EDIT BATCH':'⊞ NEW BATCH ENTRY'}</span></div>
+    <div class="grid-2 mb-16">
+      ${[['date','Date','date'],['batchNo','Batch Number','text'],['product','Product Name','text'],['quantity','Quantity (kg)','number'],['retortNo','Retort Number','text']].map(([k,l,t])=>`
+      <div><div class="fld-label">${l}</div><input class="inp" type="${t}" id="bf_${k}" value="${form[k]||''}" oninput="STATE.batchForm.${k}=this.value;if('${k}'==='f0'||'${k}'==='product')updateF0Alert()"/></div>`).join('')}
+    </div>
+    <!-- Retort Time -->
+    <div class="card" style="border-color:var(--g3);background:rgba(0,255,136,.02);margin-bottom:16px">
+      <div class="sec-head"><span>⏱ RETORT START & END TIME</span></div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-end">
+        ${renderTimerField('retortStart','RETORT START','#00b4ff',form)}
+        ${renderTimerField('retortEnd','RETORT END','#ff7700',form)}
+        ${dur?`<div><div class="fld-label">TOTAL DURATION</div><div class="mono" style="color:var(--g);background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.25);border-radius:9px;padding:6px 14px;font-weight:800;font-size:14px">⏱ ${dur}</div></div>`:''}
+      </div>
+    </div>
+    <!-- Process Timings -->
+    <div class="mb-16">
+      <div class="sec-head"><span>PROCESS TIMINGS</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px">
+        ${[['comeUpStart','Come Up START','#00b4ff'],['comeUpEnd','Come Up END','#00b4ff'],['holdingStart','Holding START','#ff7700'],['holdingEnd','Holding END','#ff7700'],['coolingStart','Cooling START','#aa44ff'],['coolingEnd','Cooling END','#aa44ff']].map(([k,l,c])=>renderTimerField(k,l,c,form)).join('')}
+      </div>
+    </div>
+    <!-- Process Data -->
+    <div class="mb-16">
+      <div class="sec-head"><span>PROCESS DATA</span></div>
+      <div class="grid-3">
+        ${[['temperature','Temperature (°C)','number'],['pressure','Pressure (bar)','number']].map(([k,l,t])=>`<div><div class="fld-label">${l}</div><input class="inp" type="${t}" id="bf_${k}" value="${form[k]||''}" oninput="STATE.batchForm.${k}=this.value"/></div>`).join('')}
+        <div><div class="fld-label">F0 Value</div><input class="inp" type="number" id="bf_f0" value="${form.f0||''}" style="border-color:${z?z.color+'60':'var(--border)'}" oninput="STATE.batchForm.f0=this.value;updateF0Alert()"/></div>
+      </div>
+      <div id="f0Alert" class="mt-12"></div>
+    </div>
+    <!-- Output -->
+    <div class="mb-16">
+      <div class="sec-head"><span>OUTPUT</span></div>
+      <div class="grid-2">
+        <div><div class="fld-label">Status</div>
+          <select class="inp" id="bf_status" onchange="STATE.batchForm.status=this.value">
+            ${['Running','Completed','Failed'].map(s=>`<option${form.status===s?' selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        <div><div class="fld-label">Remarks</div><input class="inp" id="bf_remarks" value="${form.remarks||''}" placeholder="Optional..." oninput="STATE.batchForm.remarks=this.value"/></div>
+      </div>
+    </div>
+    <div class="gap-8">
+      <button class="btn btn-green" onclick="saveBatch()">💾 ${STATE.batchEditIdx!==null?'Update Batch':'Save Batch'}</button>
+      ${STATE.batchEditIdx!==null?`<button class="btn btn-ghost" onclick="STATE.batchEditIdx=null;STATE.batchForm=null;renderBatch()">Cancel</button>`:''}
+      <span id="batchSaveOk" style="color:var(--g);font-weight:700;display:none">✓ Saved!</span>
+    </div>
+  </div>
+
+  ${batches.length>0?`
+  <div class="card">
+    <div class="sec-head"><span>ALL BATCHES (${batches.length})</span></div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr>
+      ${['Date','Batch','Product','Qty','R.Start','R.End','Duration','F0','Status',''].map(h=>`<th>${h}</th>`).join('')}
+    </tr></thead><tbody>
+      ${batches.map((b2,i)=>{
+        const dr=b2.retortStart&&b2.retortEnd?elapStr(strip(b2.retortStart),strip(b2.retortEnd)):'—';
+        const z2=getZone(b2.f0,b2.product);
+        return`<tr>
+          <td style="color:var(--sub);font-size:11px">${fmtD(b2.date)}</td>
+          <td><span class="mono" style="color:var(--b);font-weight:700">${b2.batchNo}</span></td>
+          <td>${b2.product}</td>
+          <td style="color:var(--sub)">${b2.quantity}</td>
+          <td><span class="mono" style="color:var(--g);font-size:11px">${fmtT(strip(b2.retortStart))}</span></td>
+          <td><span class="mono" style="color:var(--o);font-size:11px">${fmtT(strip(b2.retortEnd))}</span></td>
+          <td><span class="mono" style="color:var(--y);font-weight:700;font-size:11px">${dr}</span></td>
+          <td><span class="mono" style="font-weight:800;color:${z2?z2.color:'var(--sub)'}">${b2.f0||'—'}</span></td>
+          <td><span class="badge" style="background:${b2.status==='Completed'?'rgba(0,255,136,.12)':b2.status==='Failed'?'rgba(255,51,85,.12)':'rgba(255,119,0,.12)'};color:${b2.status==='Completed'?'var(--g)':b2.status==='Failed'?'var(--r)':'var(--o)'};border:1px solid ${b2.status==='Completed'?'rgba(0,255,136,.25)':b2.status==='Failed'?'rgba(255,51,85,.25)':'rgba(255,119,0,.25)'}">${b2.status}</span></td>
+          <td><div class="gap-8">
+            <button class="btn btn-ghost btn-sm" onclick="editBatch(${i})">✏</button>
+            <button class="btn btn-red btn-sm" onclick="deleteBatch(${i})">✕</button>
+          </div></td>
+        </tr>`;}).join('')}
+    </tbody></table></div>
+  </div>`:''}`;
+
+  updateF0Alert();
+  // Init timers display
+  if(!STATE.batchForm) STATE.batchForm=emptyB();
+}
+function renderTimerField(k,label,color,form){
+  const val=form[k]||'';const running=val&&!val.includes('__END');
+  return`<div id="tf_${k}">
+    <div class="fld-label" style="color:${color}99">${label}</div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      ${!val?
+        `<button class="timer-btn" style="border:1px solid ${color}50;background:${color}12;color:${color}" onclick="startTimer('${k}')">▶ Start</button>`:
+        `<span class="timer-running mono" style="color:${color};background:${color}10;border:1px solid ${color}28">${fmtT(strip(val))}</span>
+        ${running?`<span class="mono" style="font-size:11px;color:var(--g);background:rgba(0,255,136,.08);border-radius:6px;padding:3px 7px" id="elapsed_${k}">${elapStr(val)||'0s'}</span>
+        <button class="timer-btn" style="border:1px solid rgba(255,51,85,.4);background:rgba(255,51,85,.1);color:var(--r)" onclick="stopTimer('${k}')">■ Stop</button>`:''}
+        <button class="timer-btn btn-ghost" style="border:1px solid var(--border);background:transparent;color:var(--sub);padding:4px 8px;font-size:10px" onclick="clearTimer('${k}')">✕</button>`
+      }
+    </div>
+  </div>`;
+}
+function startTimer(k){if(!STATE.batchForm)STATE.batchForm=emptyB();STATE.batchForm[k]=new Date().toISOString();renderBatch();startElapsedUpdate(k);}
+function stopTimer(k){if(STATE.batchForm&&STATE.batchForm[k])STATE.batchForm[k]+=('__END');renderBatch();}
+function clearTimer(k){if(STATE.batchForm)STATE.batchForm[k]='';renderBatch();}
+function startElapsedUpdate(k){const iv=setInterval(()=>{const el=document.getElementById(`elapsed_${k}`);if(!el){clearInterval(iv);return;}const val=STATE.batchForm?.[k]||'';if(!val||val.includes('__END')){clearInterval(iv);return;}el.textContent=elapStr(val)||'0s';},1000);}
+function updateF0Alert(){
+  const el=document.getElementById('f0Alert');if(!el) return;
+  const f0=STATE.batchForm?.f0||'',product=STATE.batchForm?.product||'';
+  const z=getZone(f0,product);
+  if(z&&f0){el.innerHTML=`<div style="display:inline-flex;gap:8px;align-items:center;background:${z.color}0a;border:1px solid ${z.color}28;border-radius:10px;padding:8px 14px"><span style="font-size:16px">${z.icon}</span><span style="color:${z.color};font-weight:700;font-size:13px">${z.label}</span></div>`;}
+  else el.innerHTML='';
+}
+function saveBatch(){
+  if(!STATE.batchForm)STATE.batchForm=emptyB();
+  const f=STATE.batchForm;
+  if(!f.batchNo||!f.product){alert('Batch No aur Product zaroori!');return;}
+  if(STATE.batchEditIdx!==null){STATE.batches[STATE.batchEditIdx]={...f};STATE.batchEditIdx=null;}
+  else STATE.batches.push({...f});
+  saveBatches();STATE.batchForm=null;
+  const ok=document.getElementById('batchSaveOk');if(ok){ok.style.display='inline';setTimeout(()=>ok.style.display='none',2000);}
+  renderBatch();
+}
+function editBatch(i){STATE.batchEditIdx=i;STATE.batchForm={...STATE.batches[i]};renderBatch();window.scrollTo(0,0);}
+function deleteBatch(i){if(window.confirm('Delete karo?')){STATE.batches.splice(i,1);saveBatches();renderBatch();}}
+
+// ═══════════════════════════════════════════
+//  REPORTS
+// ═══════════════════════════════════════════
+function renderReports(){
+  const b=STATE.batches||[];
+  document.getElementById('pg-reports').innerHTML=`
+  <div class="card glow-b">
+    <div class="sec-head"><span>FILTER REPORTS</span></div>
+    <div class="gap-12 mb-16" style="flex-wrap:wrap;align-items:flex-end">
+      <div><div class="fld-label">From Date</div><input class="inp" type="date" id="rptFrom" style="width:160px"/></div>
+      <div><div class="fld-label">To Date</div><input class="inp" type="date" id="rptTo" style="width:160px"/></div>
+      <div><div class="fld-label">Status</div><select class="inp" id="rptSt" style="width:140px"><option>All</option>${['Running','Completed','Failed'].map(s=>`<option>${s}</option>`).join('')}</select></div>
+      <button class="btn btn-ghost" onclick="document.getElementById('rptFrom').value='';document.getElementById('rptTo').value='';document.getElementById('rptSt').value='All';filterReports()">Reset</button>
+      <button class="btn btn-green" onclick="exportCSV()">📥 Export CSV</button>
+    </div>
+  </div>
+  <div class="card" id="rptResult"></div>`;
+  filterReports();
+  ['rptFrom','rptTo','rptSt'].forEach(id=>document.getElementById(id)?.addEventListener('change',filterReports));
+}
+function filterReports(){
+  const from=document.getElementById('rptFrom')?.value,to=document.getElementById('rptTo')?.value,sf=document.getElementById('rptSt')?.value;
+  const b=STATE.batches||[];
+  const fil=b.filter(x=>{const d=new Date(x.date);if(from&&d<new Date(from))return false;if(to&&d>new Date(to))return false;if(sf&&sf!=='All'&&x.status!==sf)return false;return true;});
+  const el=document.getElementById('rptResult');if(!el) return;
+  if(fil.length===0){el.innerHTML=`<div class="sec-head"><span>RESULTS (0)</span></div><div style="text-align:center;padding:24px;color:var(--sub)">No results.</div>`;return;}
+  el.innerHTML=`<div class="sec-head"><span>RESULTS (${fil.length})</span></div>
+  <div class="tbl-wrap"><table class="tbl"><thead><tr>${['Date','Batch','Product','Qty','Retort','R.Start','R.End','Duration','Temp','F0','Zone','Status'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>
+  ${fil.map(b2=>{const z=getZone(b2.f0,b2.product),dr=b2.retortStart&&b2.retortEnd?elapStr(strip(b2.retortStart),strip(b2.retortEnd)):'—';return`<tr>
+    <td style="color:var(--sub);font-size:11px">${fmtD(b2.date)}</td>
+    <td><span class="mono" style="color:var(--b);font-weight:700">${b2.batchNo}</span></td>
+    <td>${b2.product}</td><td style="color:var(--sub)">${b2.quantity}kg</td><td style="color:var(--sub)">${b2.retortNo}</td>
+    <td><span class="mono" style="color:var(--g);font-size:11px">${fmtT(strip(b2.retortStart))}</span></td>
+    <td><span class="mono" style="color:var(--o);font-size:11px">${fmtT(strip(b2.retortEnd))}</span></td>
+    <td><span class="mono" style="color:var(--y);font-weight:700">${dr}</span></td>
+    <td style="color:var(--sub)">${b2.temperature?b2.temperature+'°C':'—'}</td>
+    <td><span class="mono" style="font-weight:800;color:${z?z.color:'var(--sub)'}">${b2.f0||'—'}</span></td>
+    <td>${z?`<span class="badge" style="background:${z.color}14;color:${z.color};border:1px solid ${z.color}28">${z.icon} ${z.zone}</span>`:'—'}</td>
+    <td><span class="badge" style="background:${b2.status==='Completed'?'rgba(0,255,136,.12)':b2.status==='Failed'?'rgba(255,51,85,.12)':'rgba(255,119,0,.12)'};color:${b2.status==='Completed'?'var(--g)':b2.status==='Failed'?'var(--r)':'var(--o)'};border:1px solid ${b2.status==='Completed'?'rgba(0,255,136,.25)':b2.status==='Failed'?'rgba(255,51,85,.25)':'rgba(255,119,0,.25)'}">${b2.status}</span></td>
+  </tr>`;}).join('')}</tbody></table></div>`;
+}
+function exportCSV(){
+  const from=document.getElementById('rptFrom')?.value,to=document.getElementById('rptTo')?.value,sf=document.getElementById('rptSt')?.value;
+  const fil=(STATE.batches||[]).filter(x=>{const d=new Date(x.date);if(from&&d<new Date(from))return false;if(to&&d>new Date(to))return false;if(sf&&sf!=='All'&&x.status!==sf)return false;return true;});
+  const h=['Date','Batch','Product','Qty','Retort','R.Start','R.End','Duration','Temp','Pressure','F0','Zone','Status','Remarks'];
+  const rows=fil.map(b=>{const z=getZone(b.f0,b.product),d=b.retortStart&&b.retortEnd?elapStr(strip(b.retortStart),strip(b.retortEnd)):'';return[b.date,b.batchNo,b.product,b.quantity,b.retortNo,fmtT(strip(b.retortStart)),fmtT(strip(b.retortEnd)),d,b.temperature,b.pressure,b.f0,z?z.zone:'—',b.status,b.remarks];});
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent([h,...rows].map(r=>r.join(',')).join('\n'));a.download=`report_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+}
+
+// ═══════════════════════════════════════════
+//  SHARE REPORT
+// ═══════════════════════════════════════════
+function renderShare(){
+  const co=STATE.company||{};const canWA=STATE.plan==='pro'||STATE.plan==='enterprise';const canEM=STATE.plan!=='free';
+  document.getElementById('pg-share').innerHTML=`
+  <div class="card glow-g">
+    <div class="sec-head"><span>SHARE DAILY REPORT</span></div>
+    <div class="mb-16"><div class="fld-label">Report Date</div><input class="inp" type="date" id="shareDate" value="${new Date().toISOString().slice(0,10)}" oninput="updateSharePreview()" style="width:200px"/></div>
+    <div id="sharePreview" style="background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:11px;padding:14px;margin-bottom:18px;max-height:170px;overflow-y:auto"><pre style="font-size:11px;color:var(--text);white-space:pre-wrap;font-family:var(--font);line-height:1.6"></pre></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="card" style="border-color:rgba(0,255,136,.2);opacity:${canWA?1:.55}">
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">📱 WhatsApp</div>
+        ${!canWA?`<span class="badge" style="background:var(--pud);color:var(--pu);border:1px solid rgba(170,68,255,.3);margin-bottom:8px;display:inline-block">Pro Required</span>`:''}
+        <div class="fld-label">Phone (+92...)</div>
+        <div class="inp-wrap mb-12"><span class="inp-icon">📞</span><input class="inp" id="sharePhone" placeholder="+92-300-0000000"/></div>
+        <button class="btn btn-green full" ${canWA?'':'disabled'} onclick="sendWhatsApp()" id="waBtn">📲 Send WhatsApp</button>
+      </div>
+      <div class="card" style="border-color:rgba(0,180,255,.2);opacity:${canEM?1:.55}">
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">📧 Email</div>
+        ${!canEM?`<span class="badge" style="background:rgba(0,180,255,.12);color:var(--b);border:1px solid rgba(0,180,255,.3);margin-bottom:8px;display:inline-block">Basic Required</span>`:''}
+        <div class="fld-label">Email Address</div>
+        <div class="inp-wrap mb-12"><span class="inp-icon">✉️</span><input class="inp" id="shareEmail" placeholder="manager@company.com"/></div>
+        <button class="btn btn-primary full" ${canEM?'':'disabled'} onclick="sendEmail()">📧 Send Email</button>
+      </div>
+    </div>
+  </div>`;
+  updateSharePreview();
+}
+function getReportText(){
+  const co=STATE.company||{};const date=document.getElementById('shareDate')?.value||new Date().toISOString().slice(0,10);
+  const tb=(STATE.batches||[]).filter(b=>b.date===date);
+  const al=tb.filter(b=>{const z=getZone(b.f0,b.product);return z&&z.zone!=='safe'&&z.zone!=='unknown';});
+  const tq=tb.reduce((s,b)=>s+(parseFloat(b.quantity)||0),0);
+  return`*${co.name||'Retort Pro'} — Daily Report*\n📅 ${fmtD(date)}\n\n📊 Summary:\n• Batches: ${tb.length} | Production: ${tq}kg\n• Completed: ${tb.filter(b=>b.status==='Completed').length} | Running: ${tb.filter(b=>b.status==='Running').length} | Failed: ${tb.filter(b=>b.status==='Failed').length}\n\n${al.length>0?`⚠️ F0 Alerts:\n${al.map(b=>{const z=getZone(b.f0,b.product);return`• ${b.batchNo} | ${b.product} | F0=${b.f0} | ${z?.label}`;}).join('\n')}`:'✅ All F0 Values Safe'}\n\n_Sent via Retort Pro Enterprise_`;
+}
+function updateSharePreview(){const el=document.getElementById('sharePreview');if(el)el.querySelector('pre').textContent=getReportText();}
+function sendWhatsApp(){const p=document.getElementById('sharePhone')?.value;if(!p){alert('Phone daalo!');return;}window.open(`https://wa.me/${p.replace(/\D/g,'')}?text=${encodeURIComponent(getReportText())}`,'_blank');const b=document.getElementById('waBtn');if(b){b.textContent='✓ Opened!';setTimeout(()=>b.textContent='📲 Send WhatsApp',2500);}}
+function sendEmail(){const e=document.getElementById('shareEmail')?.value;if(!e){alert('Email daalo!');return;}const co=STATE.company||{};window.open(`mailto:${e}?subject=${encodeURIComponent(co.name+' Report')}&body=${encodeURIComponent(getReportText().replace(/\*/g,''))}`,'_blank');}
+
+// ═══════════════════════════════════════════
+//  STOCK
+// ═══════════════════════════════════════════
+function renderStock(){
+  const entries=LS.get(`rp_stock_${STATE.company?.id}`,[{date:'2025-04-01',product:'Canned Fish',opening:500,production:200,dispatch:150,closing:550}]);
+  document.getElementById('pg-stock').innerHTML=`
+  <div class="card glow-g">
+    <div class="sec-head"><span>➕ STOCK ENTRY</span></div>
+    <div class="grid-3 mb-16">
+      <div><div class="fld-label">Date</div><input class="inp" type="date" id="sk_date" value="${new Date().toISOString().slice(0,10)}"/></div>
+      <div><div class="fld-label">Product</div><input class="inp" id="sk_product" placeholder="Product name"/></div>
+      <div><div class="fld-label">Opening (kg)</div><input class="inp" type="number" id="sk_opening" oninput="updateClosing()"/></div>
+      <div><div class="fld-label">Production (kg)</div><input class="inp" type="number" id="sk_production" oninput="updateClosing()"/></div>
+      <div><div class="fld-label">Dispatch (kg)</div><input class="inp" type="number" id="sk_dispatch" oninput="updateClosing()"/></div>
+      <div><div class="fld-label">Closing (Auto)</div><div class="inp mono" id="sk_closing" style="border-color:rgba(0,255,136,.3);color:var(--g);cursor:default;font-weight:800;font-size:14px">0 kg</div></div>
+    </div>
+    <button class="btn btn-green" onclick="saveStock()">💾 Save Entry</button>
+  </div>
+  <div class="card">
+    <div class="sec-head"><span>STOCK REGISTER</span></div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr>${['Date','Product','Opening','Production','Dispatch','Closing'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>
+    ${entries.map(e=>`<tr>
+      <td style="color:var(--sub)">${fmtD(e.date)}</td><td>${e.product}</td>
+      <td style="color:var(--sub)">${e.opening}kg</td>
+      <td style="color:var(--g)">${e.production}kg</td>
+      <td style="color:var(--o)">${e.dispatch}kg</td>
+      <td class="mono" style="color:var(--b);font-weight:800">${e.closing}kg</td>
+    </tr>`).join('')}
+    </tbody></table></div>
+  </div>`;
+}
+function updateClosing(){const o=parseFloat(document.getElementById('sk_opening')?.value)||0,p=parseFloat(document.getElementById('sk_production')?.value)||0,d=parseFloat(document.getElementById('sk_dispatch')?.value)||0;const el=document.getElementById('sk_closing');if(el)el.textContent=`${o+p-d} kg`;}
+function saveStock(){const product=document.getElementById('sk_product')?.value;if(!product){alert('Product daalo!');return;}const entries=LS.get(`rp_stock_${STATE.company?.id}`,[]);const o=parseFloat(document.getElementById('sk_opening')?.value)||0,p=parseFloat(document.getElementById('sk_production')?.value)||0,d=parseFloat(document.getElementById('sk_dispatch')?.value)||0;entries.push({date:document.getElementById('sk_date')?.value,product,opening:o,production:p,dispatch:d,closing:o+p-d});LS.set(`rp_stock_${STATE.company?.id}`,entries);renderStock();}
+
+// ═══════════════════════════════════════════
+//  AI ASSISTANT
+// ═══════════════════════════════════════════
+let aiMsgs=[{role:'assistant',text:'Assalam! Main aapka Retort AI Expert hoon 🤖\n\nMujhse puchho:\n• F0 analysis\n• Safety check\n• Production tips\n• Batch performance'}];
+function renderAI(){
+  const canAI=STATE.plan!=='free';
+  if(!canAI){document.getElementById('pg-ai').innerHTML=`
+  <div class="card glow-pu" style="text-align:center;padding:40px 20px">
+    <div style="font-size:48px;margin-bottom:14px">🤖</div>
+    <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:8px">AI Assistant — Pro Feature</div>
+    <div style="color:var(--sub);margin-bottom:20px;line-height:1.7">F0 analysis aur production insights ke liye Basic ya Pro plan lo.</div>
+    <span class="badge" style="background:var(--pud);color:var(--pu);border:1px solid rgba(170,68,255,.3);font-size:12px;padding:5px 14px">🚀 Basic Plan se Available — ₹999/month</span>
+  </div>`;return;}
+  document.getElementById('pg-ai').innerHTML=`
+  <div class="card glow-pu">
+    <div class="sec-head"><span>🤖 AI RETORT ASSISTANT</span></div>
+    <div id="aiMessages" style="height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding-right:4px;margin-bottom:14px">${renderAIMsgs()}</div>
+    <div style="display:flex;gap:8px">
+      <input class="inp" id="aiInp" placeholder="F0 safe hai? Analysis karo..." onkeydown="if(event.key==='Enter')sendAI()" style="flex:1"/>
+      <button class="btn btn-purple" onclick="sendAI()" id="aiSendBtn">↑</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      ${['F0 analysis karo','Safety check','Production tips','Alert batches'].map(q=>`<button onclick="document.getElementById('aiInp').value='${q}'" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--sub);cursor:pointer;font-size:11px;font-family:var(--sans)">${q}</button>`).join('')}
+    </div>
+  </div>`;
+  document.getElementById('aiMessages').scrollTop=9999;
+}
+function renderAIMsgs(){
+  return aiMsgs.map(m=>`
+  <div style="display:flex;justify-content:${m.role==='user'?'flex-end':'flex-start'}">
+    <div style="max-width:80%;padding:11px 14px;border-radius:${m.role==='user'?'18px 18px 4px 18px':'18px 18px 18px 4px'};background:${m.role==='user'?'linear-gradient(135deg,var(--pu),#5500aa)':'rgba(0,180,255,.07)'};border:${m.role==='assistant'?'1px solid var(--border)':'none'};color:var(--text);font-size:13px;line-height:1.7;white-space:pre-wrap">${m.text}</div>
+  </div>`).join('')+`<div id="aiBottom"></div>`;
+}
+async function sendAI(){
+  const inp=document.getElementById('aiInp');if(!inp?.value.trim()) return;
+  const q=inp.value.trim();inp.value='';
+  aiMsgs.push({role:'user',text:q});
+  const loadMsg={role:'assistant',text:'● ● ●'};aiMsgs.push(loadMsg);
+  renderAIMessages();
+  const ctx=`You are a Retort Sterilization AI Expert. Data: Batches=${STATE.batches?.length||0}, Products=${(STATE.ranges||[]).map(r=>`${r.product}(${r.min}-${r.max})`).join(',')}, Recent F0=${(STATE.batches||[]).slice(-3).map(b=>`${b.product}:${b.f0}`).join(',')}. Answer in simple Hinglish.`;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,system:ctx,messages:[{role:'user',content:q}]})});
+    const data=await res.json();
+    aiMsgs[aiMsgs.length-1]={role:'assistant',text:data.content?.[0]?.text||'Error. Try again.'};
+  }catch{aiMsgs[aiMsgs.length-1]={role:'assistant',text:'Network error. Please retry.'};}
+  renderAIMessages();
+}
+function renderAIMessages(){const el=document.getElementById('aiMessages');if(el){el.innerHTML=renderAIMsgs();el.scrollTop=9999;}}
+
+// ═══════════════════════════════════════════
+//  F0 SETTINGS
+// ═══════════════════════════════════════════
+function renderF0(){
+  const ranges=STATE.ranges||[];
+  document.getElementById('pg-f0').innerHTML=`
+  <div class="card" style="border-color:rgba(170,68,255,.2);background:rgba(170,68,255,.02);margin-bottom:16px">
+    <div class="sec-head"><span>⚗ F0 ZONE CONFIGURATION</span></div>
+    <div style="color:var(--text);font-size:14px;font-weight:800;margin-bottom:8px">Product-wise Safe F0 Range</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px">
+      <span style="font-size:12px;color:var(--r)">🔴 Risk = Min se niche</span>
+      <span style="font-size:12px;color:var(--g)">🟢 Safe = Range ke andar</span>
+      <span style="font-size:12px;color:var(--y)">🟡 Overheat = Max se upar</span>
+    </div>
+    <div style="padding:10px 14px;background:rgba(255,204,0,.06);border:1px solid rgba(255,204,0,.2);border-radius:9px;font-size:12px;color:var(--y)">
+      🌽 Example — Corn: Min=18, Max=25 → F0=22 ✅ SAFE | F0=15 ⚠️ RISK | F0=28 🔥 OVERHEAT
+    </div>
+  </div>
+  <div class="card glow-pu" id="f0FormCard">
+    <div class="sec-head" id="f0FormHead"><span>➕ ADD PRODUCT RANGE</span></div>
+    <div class="grid-3 mb-16" id="f0FormFields">
+      <div><div class="fld-label">Product Name</div><input class="inp" id="f0_product" placeholder="e.g. Corn, Tuna"/></div>
+      <div><div class="fld-label">Min F0 (Safe Start)</div><input class="inp" type="number" id="f0_min" placeholder="e.g. 18" oninput="updateF0Preview()"/></div>
+      <div><div class="fld-label">Max F0 (Safe End)</div><input class="inp" type="number" id="f0_max" placeholder="e.g. 25" oninput="updateF0Preview()"/></div>
+    </div>
+    <div id="f0Preview" style="display:none;margin-bottom:14px"></div>
+    <div class="gap-8">
+      <button class="btn btn-green" id="f0SaveBtn" onclick="saveF0Range()">➕ Add Range</button>
+      <button class="btn btn-ghost" id="f0CancelBtn" onclick="cancelF0Edit()" style="display:none">Cancel</button>
+      <span id="f0Err" class="err-msg"></span>
+    </div>
+  </div>
+  <div id="f0RangesList"></div>`;
+  renderF0RangesList();
+}
+let f0EditIdx=null;
+function updateF0Preview(){
+  const mn=document.getElementById('f0_min')?.value,mx=document.getElementById('f0_max')?.value;
+  const el=document.getElementById('f0Preview');if(!el) return;
+  if(mn&&mx&&parseFloat(mn)<parseFloat(mx)){
+    el.style.display='flex';
+    el.innerHTML=`<div style="display:flex;gap:10px;padding:10px 14px;background:rgba(0,255,136,.05);border:1px solid rgba(0,255,136,.2);border-radius:10px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:12px;color:var(--sub);font-weight:600">Preview →</span>
+      <span class="badge" style="background:rgba(255,51,85,.12);color:var(--r);border:1px solid rgba(255,51,85,.25)">Risk &lt; ${mn}</span>
+      <span class="badge" style="background:rgba(0,255,136,.12);color:var(--g);border:1px solid rgba(0,255,136,.25)">Safe ${mn}–${mx}</span>
+      <span class="badge" style="background:rgba(255,204,0,.12);color:var(--y);border:1px solid rgba(255,204,0,.25)">Overheat &gt; ${mx}</span>
+    </div>`;
+  }else el.style.display='none';
+}
+function saveF0Range(){
+  const product=document.getElementById('f0_product')?.value?.trim();
+  const min=parseFloat(document.getElementById('f0_min')?.value);
+  const max=parseFloat(document.getElementById('f0_max')?.value);
+  const errEl=document.getElementById('f0Err');
+  if(!product||isNaN(min)||isNaN(max)){errEl.textContent='⚠ Saare fields bharo!';return;}
+  if(min>=max){errEl.textContent='⚠ Min < Max hona chahiye!';return;}
+  const entry={product,min,max};
+  if(f0EditIdx!==null){STATE.ranges[f0EditIdx]=entry;f0EditIdx=null;}
+  else{if(STATE.ranges.find(r=>r.product.toLowerCase()===product.toLowerCase())){errEl.textContent='⚠ Product already exists!';return;}STATE.ranges.push(entry);}
+  saveRanges();cancelF0Edit();renderF0RangesList();
+}
+function cancelF0Edit(){f0EditIdx=null;document.getElementById('f0_product').value='';document.getElementById('f0_min').value='';document.getElementById('f0_max').value='';document.getElementById('f0Err').textContent='';document.getElementById('f0SaveBtn').textContent='➕ Add Range';document.getElementById('f0CancelBtn').style.display='none';document.getElementById('f0FormHead').innerHTML='<span>➕ ADD PRODUCT RANGE</span>';updateF0Preview();}
+function editF0Range(i){const r=STATE.ranges[i];f0EditIdx=i;document.getElementById('f0_product').value=r.product;document.getElementById('f0_min').value=r.min;document.getElementById('f0_max').value=r.max;document.getElementById('f0SaveBtn').textContent='💾 Update';document.getElementById('f0CancelBtn').style.display='inline-flex';document.getElementById('f0FormHead').innerHTML='<span>✏ UPDATE RANGE</span>';updateF0Preview();}
+function deleteF0Range(i){if(window.confirm('Delete karo?')){STATE.ranges.splice(i,1);saveRanges();renderF0RangesList();}}
+function renderF0RangesList(){
+  const el=document.getElementById('f0RangesList');if(!el) return;
+  const ranges=STATE.ranges||[];
+  if(ranges.length===0){el.innerHTML=`<div class="card" style="text-align:center;padding:28px;color:var(--sub)">No ranges set. Add above!</div>`;return;}
+  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:14px">
+  ${ranges.map((r,i)=>{const span=r.max-r.min,MAXD=r.max*1.5;return`
+  <div class="card" style="border-color:rgba(0,255,136,.2);position:relative;overflow:hidden">
+    <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--g),transparent)"></div>
+    <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px">🏷 ${r.product}</div>
+    <div style="position:relative;margin:14px 0;height:28px">
+      <div style="position:absolute;top:50%;left:0;right:0;height:5px;background:var(--dim);border-radius:3px;transform:translateY(-50%)"></div>
+      <div style="position:absolute;top:50%;left:${(r.min/MAXD)*100}%;width:${(span/MAXD)*100}%;height:5px;background:linear-gradient(90deg,var(--g),var(--b));border-radius:3px;transform:translateY(-50%);box-shadow:0 0 8px var(--g)"></div>
+      ${[{v:r.min,c:'var(--g)'},{v:r.max,c:'var(--y)'}].map(({v,c})=>`<div style="position:absolute;top:0;left:${(v/MAXD)*100}%;transform:translateX(-50%)"><div style="width:2px;height:28px;background:${c};margin:0 auto"></div><div class="mono" style="font-size:9px;color:${c};text-align:center;font-weight:800;white-space:nowrap">${v}</div></div>`).join('')}
+    </div>
+    <div class="gap-8 mb-12">
+      <span class="badge" style="background:rgba(255,51,85,.12);color:var(--r);border:1px solid rgba(255,51,85,.25)">Risk &lt; ${r.min}</span>
+      <span class="badge" style="background:rgba(0,255,136,.12);color:var(--g);border:1px solid rgba(0,255,136,.25)">Safe ${r.min}–${r.max}</span>
+      <span class="badge" style="background:rgba(255,204,0,.12);color:var(--y);border:1px solid rgba(255,204,0,.25)">Overheat &gt; ${r.max}</span>
+    </div>
+    <div class="gap-8">
+      <button class="btn btn-ghost btn-sm" onclick="editF0Range(${i})">✏ Edit</button>
+      <button class="btn btn-red btn-sm" onclick="deleteF0Range(${i})">✕ Delete</button>
+    </div>
+  </div>`;}).join('')}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  SUBSCRIPTION
+// ═══════════════════════════════════════════
+function renderPlans(){
+  document.getElementById('pg-plans').innerHTML=`
+  <div class="card glow-gold" style="text-align:center;padding:24px 28px;margin-bottom:20px;position:relative;overflow:hidden">
+    <div style="position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(245,158,11,.05);pointer-events:none"></div>
+    <div class="mono" style="font-size:10px;color:var(--gold);letter-spacing:3px;margin-bottom:6px">💰 SUBSCRIPTION PLANS</div>
+    <div style="font-size:26px;font-weight:900;color:var(--text);margin-bottom:6px">Apna Plan Choose Karo</div>
+    <div style="color:var(--sub);font-size:13px;margin-bottom:18px">Factories ko sell karo — ₹999 se ₹6,999/month tak kamao</div>
+    <div style="display:inline-flex;background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:30px;padding:3px" id="billingToggle">
+      ${['monthly','yearly'].map(b=>`<button onclick="STATE.billing='${b}';renderPlanCards()" style="padding:6px 18px;border-radius:26px;border:none;background:transparent;color:var(--sub);cursor:pointer;font-weight:700;font-size:12px;font-family:var(--sans);transition:all .2s" id="bt_${b}">${b==='monthly'?'Monthly':'Yearly (20% OFF)'}</button>`).join('')}
+    </div>
+  </div>
+  <div id="planCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:14px;margin-bottom:18px"></div>
+  <div class="gap-8 mb-16">
+    <button class="btn btn-gold" id="activatePlanBtn" onclick="activatePlan()">🚀 Activate Plan</button>
+    <span id="planActivateOk" style="color:var(--g);font-weight:700;display:none">✅ Plan Activated!</span>
+  </div>
+  <div class="card glow-gold">
+    <div class="sec-head"><span>💰 IS SYSTEM SE PAISE KAISE KAMAO</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:14px">
+      ${[{i:'🏭',t:'Factory Sales',d:'Apne area ki food factories dhundo. Pro plan pe ₹2,499/month. 20 factories = ₹50,000/month!',c:'#00b4ff'},
+        {i:'🤝',t:'Reseller Program',d:'Agents banao jo factories mein install karein. Unhe 30% commission. Aap baithe kamate raho!',c:'#00ff88'},
+        {i:'🎓',t:'Training + Support',d:'Setup ₹5,000–₹15,000 alag lo. Monthly support ₹2,000/month. Recurring income!',c:'#aa44ff'},
+        {i:'📱',t:'App Store',d:'Android APK banao. Google Play pe ₹299/month subscription. International market!',c:'#ff7700'}
+      ].map(c=>`<div class="card" style="border-color:${c.c}22"><div style="font-size:22px;margin-bottom:8px">${c.i}</div><div style="font-size:13px;font-weight:700;color:${c.c};margin-bottom:6px">${c.t}</div><div style="font-size:12px;color:var(--sub);line-height:1.7">${c.d}</div></div>`).join('')}
+    </div>
+  </div>`;
+  STATE.billing=STATE.billing||'monthly';STATE.selectedPlan=STATE.plan;
+  renderPlanCards();
+}
+function renderPlanCards(){
+  const el=document.getElementById('planCards');if(!el) return;
+  const billing=STATE.billing||'monthly';
+  el.innerHTML=PLANS.map(p=>{
+    const isS=STATE.selectedPlan===p.id,isC=STATE.plan===p.id;
+    const yp=p.price>0?Math.round(p.price*12*.8):0;
+    return`<div class="plan-card ${isS?'selected':''}" style="background:${isS?p.color+'0a':'var(--bg3)'};border-color:${isS?p.color+'50':''};box-shadow:${isS?`0 0 24px ${p.color}10`:''}" onclick="STATE.selectedPlan='${p.id}';renderPlanCards();document.getElementById('activatePlanBtn').textContent='🚀 Activate '+decodeURIComponent('${encodeURIComponent(p.name)}')+ ' Plan'">
+      ${p.popular?`<div class="plan-popular">POPULAR</div>`:''}
+      ${isC?`<div class="plan-active" style="top:${p.popular?32:10}px;right:10px">ACTIVE</div>`:''}
+      <div style="font-size:24px;margin-bottom:8px">${p.icon}</div>
+      <div style="font-size:16px;font-weight:800;color:${p.color};margin-bottom:4px">${p.name}</div>
+      <div class="mono" style="font-size:20px;font-weight:900;color:var(--text);margin-bottom:2px">${billing==='yearly'&&p.price>0?`₹${yp.toLocaleString()}/yr`:p.label}</div>
+      ${billing==='yearly'&&p.price>0?`<div style="font-size:11px;color:var(--g);margin-bottom:10px">Save ₹${(p.price*12-yp).toLocaleString()}/year</div>`:''}
+      <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:8px">
+        ${p.features.map(f=>`<div style="display:flex;gap:6px;margin-bottom:5px"><span style="color:${p.color};font-size:12px">✓</span><span style="color:${isS?'var(--text)':'var(--sub)'};font-size:12px">${f}</span></div>`).join('')}
+      </div>
+      ${isS?`<div style="margin-top:10px;height:2px;border-radius:1px;background:linear-gradient(90deg,${p.color},transparent)"></div>`:''}
+    </div>`;}).join('');
+  // Update toggle buttons
+  ['monthly','yearly'].forEach(b=>{const el2=document.getElementById(`bt_${b}`);if(el2){el2.style.background=billing===b?'rgba(0,255,136,.12)':'transparent';el2.style.color=billing===b?'var(--g)':'var(--sub)';}});
+}
+function activatePlan(){STATE.plan=STATE.selectedPlan||STATE.plan;LS.set('rp_plan',STATE.plan);updatePlanBadge();const ok=document.getElementById('planActivateOk');if(ok){ok.style.display='inline';setTimeout(()=>ok.style.display='none',2500);}renderPlanCards();}
+
+// ═══════════════════════════════════════════
+//  SETTINGS — Full with tabs
+// ═══════════════════════════════════════════
+function renderSettings(){
+  document.getElementById('pg-settings').innerHTML=`
+  <div class="settings-tabs">
+    ${[['company','🏢 Company'],['users','👥 Users'],['profile','👤 My Profile']].map(([id,l])=>`<div class="st-tab ${STATE.settingsTab===id?'active':''}" onclick="STATE.settingsTab='${id}';renderSettingsContent()">${l}</div>`).join('')}
+  </div>
+  <div id="settingsContent"></div>`;
+  renderSettingsContent();
+}
+function renderSettingsContent(){
+  const t=STATE.settingsTab;
+  if(t==='company') renderCompanySettings();
+  else if(t==='users') renderUserSettings();
+  else renderProfileSettings();
+}
+
+function renderCompanySettings(){
+  const co=STATE.company||{};
+  document.getElementById('settingsContent').innerHTML=`
+  <div class="card glow-gold">
+    <div class="sec-head"><span>🏢 COMPANY PROFILE & BRANDING</span></div>
+    <!-- Live Preview -->
+    <div class="card mb-16" id="coPreview" style="border-color:${co.color||'#00ff88'}38;background:${co.color||'#00ff88'}04">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:48px;height:48px;border-radius:13px;background:${co.color||'#00ff88'}18;border:2px solid ${co.color||'#00ff88'}45;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 16px ${co.color||'#00ff88'}20" id="prevIcon">${co.icon||'⚙'}</div>
+        <div>
+          <div style="font-size:17px;font-weight:900;color:var(--text)" id="prevName">${co.name||'Company Name'}</div>
+          <div style="font-size:12px;color:var(--sub);margin-top:2px" id="prevTag">${co.tagline||'Tagline'}</div>
+          ${co.city?`<div style="font-size:11px;color:${co.color||'#00ff88'};margin-top:1px">📍 ${co.city}</div>`:''}
+        </div>
+        <div style="margin-left:auto;font-size:11px;color:var(--sub)">Sidebar preview →</div>
+      </div>
+    </div>
+    <!-- Icon Picker -->
+    <div class="mb-16">
+      <div class="fld-label">Logo Icon</div>
+      <div class="icon-picker mb-12">${ICONS.map(ic=>`<div class="icon-pick${(co.icon||'⚙')===ic?' selected':''}" onclick="updateCoIcon('${ic}')">${ic}</div>`).join('')}</div>
+      <div class="fld-label">Brand Color</div>
+      <div class="gap-8">${COLORS.map(c=>`<div class="color-pick${(co.color||'#00ff88')===c?' selected':''}" style="background:${c};box-shadow:${(co.color||'#00ff88')===c?`0 0 10px ${c}`:''}" onclick="updateCoColor('${c}')"></div>`).join('')}</div>
+    </div>
+    <!-- Fields -->
+    <div class="grid-2 mb-16">
+      <div><div class="fld-label">Company Name *</div><input class="inp" id="co_name" value="${co.name||''}" oninput="document.getElementById('prevName').textContent=this.value||'Company Name'" placeholder="Al-Barkat Foods Pvt. Ltd."/></div>
+      <div><div class="fld-label">Tagline</div><input class="inp" id="co_tag" value="${co.tagline||''}" oninput="document.getElementById('prevTag').textContent=this.value||'Tagline'" placeholder="Quality Food Since 1998"/></div>
+      <div><div class="fld-label">City / Location</div><input class="inp" id="co_city" value="${co.city||''}" placeholder="Karachi, Pakistan"/></div>
+      <div><div class="fld-label">Industry</div><select class="inp" id="co_industry"><option${(co.industry||'')==='Food Processing'?' selected':''}>Food Processing</option><option${co.industry==='Canned Foods'?' selected':''}>Canned Foods</option><option${co.industry==='Fish Processing'?' selected':''}>Fish Processing</option><option${co.industry==='Dairy'?' selected':''}>Dairy</option><option${co.industry==='Beverages'?' selected':''}>Beverages</option><option${co.industry==='Other'?' selected':''}>Other</option></select></div>
+      <div><div class="fld-label">Phone</div><div class="inp-wrap"><span class="inp-icon">📞</span><input class="inp" id="co_phone" value="${co.phone||''}" placeholder="+92-300-0000000"/></div></div>
+      <div><div class="fld-label">Website</div><div class="inp-wrap"><span class="inp-icon">🌐</span><input class="inp" id="co_website" value="${co.website||''}" placeholder="www.yourcompany.com"/></div></div>
+    </div>
+    <div class="gap-8">
+      <button class="btn btn-gold" onclick="saveCompanySettings()">💾 Save Company Profile</button>
+      <span id="coSaveOk" style="color:var(--g);font-weight:700;display:none">✅ Saved!</span>
+    </div>
+  </div>`;
+}
+function updateCoIcon(ic){STATE.company.icon=ic;document.querySelectorAll('.icon-pick').forEach(el=>{el.classList.toggle('selected',el.textContent===ic);});document.getElementById('prevIcon').textContent=ic;document.getElementById('sbIcon').textContent=ic;}
+function updateCoColor(c){STATE.company.color=c;document.querySelectorAll('.color-pick').forEach(el=>{const ec=el.style.background;el.classList.toggle('selected',ec===c);el.style.boxShadow=ec===c?`0 0 10px ${c}`:'';});const prev=document.getElementById('coPreview');if(prev){prev.style.borderColor=c+'38';prev.style.background=c+'04';}document.getElementById('sbIcon').style.borderColor=c+'44';document.getElementById('sbIcon').style.background=c+'14';}
+function saveCompanySettings(){
+  const name=document.getElementById('co_name')?.value?.trim();if(!name){alert('Company name zaroori!');return;}
+  STATE.company={...STATE.company,name,tagline:document.getElementById('co_tag')?.value||'',city:document.getElementById('co_city')?.value||'',industry:document.getElementById('co_industry')?.value||'Food Processing',phone:document.getElementById('co_phone')?.value||'',website:document.getElementById('co_website')?.value||''};
+  const all=LS.get('rp_companies',[]);LS.set('rp_companies',all.map(c=>c.id===STATE.company.id?{...c,...STATE.company}:c));
+  document.getElementById('sbName').textContent=name;document.getElementById('sbTag').textContent=(STATE.company.tagline||'PRODUCTION SYSTEM').toUpperCase();
+  const ok=document.getElementById('coSaveOk');if(ok){ok.style.display='inline';setTimeout(()=>ok.style.display='none',2000);}
+}
+
+function renderUserSettings(){
+  const users=LS.get('rp_users',[]).filter(u=>u.companyId===STATE.user.companyId);
+  const canManage=STATE.user.role==='Owner'||STATE.user.role==='Admin';
+  const roles=STATE.user.role==='Owner'?['Admin','Supervisor','Operator']:['Supervisor','Operator'];
+  document.getElementById('settingsContent').innerHTML=`
+  <div class="card glow-pu">
+    <div class="sec-head"><span>👥 USER & ROLE MANAGEMENT</span></div>
+    ${canManage?`
+    <div class="card mb-16" style="border-color:rgba(170,68,255,.2);background:rgba(170,68,255,.03)">
+      <div style="font-size:13px;color:var(--pu);font-weight:700;margin-bottom:12px" id="userFormTitle">➕ Naya User / Login ID Banao</div>
+      <div class="grid-2 mb-12">
+        <div><div class="fld-label">Full Name</div><div class="inp-wrap"><span class="inp-icon">👤</span><input class="inp" id="uf_name" placeholder="Ahmed Ali"/></div></div>
+        <div><div class="fld-label">Username (Login ID)</div><div class="inp-wrap"><span class="inp-icon">@</span><input class="inp" id="uf_username" placeholder="ahmed.ali"/></div></div>
+        <div><div class="fld-label">Password</div><div style="position:relative"><div class="inp-wrap"><span class="inp-icon">🔒</span><input class="inp" id="uf_password" type="password" placeholder="Min 4 chars" style="padding-right:38px"/></div><button onclick="togglePw('uf_password',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--sub);font-size:13px;padding:0">👁</button></div></div>
+        <div><div class="fld-label">Role</div><select class="inp" id="uf_role">${roles.map(r=>`<option>${r}</option>`).join('')}</select></div>
+      </div>
+      <!-- Role descriptions -->
+      <div class="gap-8 mb-12">
+        ${[['Admin','#aa44ff','Users manage + full access'],['Supervisor','#00b4ff','Reports + Batches'],['Operator','#00ff88','Sirf Batch Entry']].filter(([r])=>roles.includes(r)).map(([r,c,d])=>`
+        <div onclick="document.getElementById('uf_role').value='${r}'" style="padding:6px 11px;border-radius:9px;cursor:pointer;border:1px solid ${c}30;background:${c}0a;flex:1;min-width:120px">
+          <div style="font-size:12px;font-weight:700;color:${c}">${r}</div>
+          <div style="font-size:10px;color:var(--sub);margin-top:1px">${d}</div>
+        </div>`).join('')}
+      </div>
+      <span id="ufErr" class="err-msg mb-12"></span>
+      <div class="gap-8">
+        <button class="btn btn-green" id="ufSaveBtn" onclick="saveUserForm()">➕ Add User</button>
+        <button class="btn btn-ghost" id="ufCancelBtn" onclick="cancelUserEdit()" style="display:none">Cancel</button>
+        <span id="ufOk" style="color:var(--g);font-weight:700;display:none">✅ Saved!</span>
+      </div>
+    </div>`:''}
+    <div class="tbl-wrap"><table class="tbl"><thead><tr>${['#','Name','Username','Password','Role','Actions'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>
+    ${users.map((u,i)=>`<tr>
+      <td style="color:var(--sub)">${i+1}</td>
+      <td><div style="display:flex;align-items:center;gap:8px">
+        <div style="width:30px;height:30px;border-radius:8px;background:${rcColor(u.role)}18;border:1px solid ${rcColor(u.role)}38;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:${rcColor(u.role)};flex-shrink:0">${(u.displayName||u.username).charAt(0).toUpperCase()}</div>
+        <div><div style="font-weight:700;color:var(--text)">${u.displayName||'—'}</div>${u.role==='Owner'?'<div class="mono" style="font-size:9px;color:var(--gold)">OWNER</div>':''}</div>
+      </div></td>
+      <td><span class="mono" style="color:var(--b);background:rgba(0,180,255,.08);border:1px solid rgba(0,180,255,.2);border-radius:6px;padding:2px 8px;font-size:11px">@${u.username}</span></td>
+      <td><span class="mono" style="color:var(--sub);font-size:11px">${'•'.repeat(Math.min(u.password.length,8))}</span></td>
+      <td><span class="badge" style="background:${rcColor(u.role)}18;color:${rcColor(u.role)};border:1px solid ${rcColor(u.role)}30">${u.role}</span></td>
+      <td>${u.role!=='Owner'&&canManage?`<div class="gap-8">
+        <button class="btn btn-ghost btn-sm" onclick="editUserForm('${u.id}')">✏</button>
+        <button class="btn btn-red btn-sm" onclick="deleteUser('${u.id}')">✕</button>
+      </div>`:'—'}</td>
+    </tr>`).join('')}
+    </tbody></table></div>
+  </div>`;
+  STATE._userEditId=null;
+}
+function saveUserForm(){
+  const name=document.getElementById('uf_name')?.value?.trim();
+  const username=document.getElementById('uf_username')?.value?.trim();
+  const password=document.getElementById('uf_password')?.value;
+  const role=document.getElementById('uf_role')?.value;
+  const errEl=document.getElementById('ufErr');
+  if(!name||!username||!password){errEl.textContent='⚠ Saare fields zaroori!';return;}
+  if(password.length<4){errEl.textContent='⚠ Password min 4 chars!';return;}
+  const allUsers=LS.get('rp_users',[]);
+  const dup=allUsers.find(u=>u.username.toLowerCase()===username.toLowerCase()&&u.id!==STATE._userEditId);
+  if(dup){errEl.textContent='⚠ Username already exists!';return;}
+  if(STATE._userEditId){LS.set('rp_users',allUsers.map(u=>u.id===STATE._userEditId?{...u,displayName:name,username,password,role}:u));}
+  else{LS.set('rp_users',[...allUsers,{id:uid(),displayName:name,username,password,role,companyId:STATE.user.companyId,contact:'',method:''}]);}
+  cancelUserEdit();const ok=document.getElementById('ufOk');if(ok){ok.style.display='inline';setTimeout(()=>ok.style.display='none',2000);}
+  renderUserSettings();
+}
+function editUserForm(id){
+  STATE._userEditId=id;const u=LS.get('rp_users',[]).find(x=>x.id===id);if(!u) return;
+  document.getElementById('uf_name').value=u.displayName||'';document.getElementById('uf_username').value=u.username;document.getElementById('uf_password').value=u.password;document.getElementById('uf_role').value=u.role;
+  document.getElementById('ufSaveBtn').textContent='💾 Update User';document.getElementById('ufCancelBtn').style.display='inline-flex';document.getElementById('userFormTitle').textContent='✏ User Edit Karo';document.getElementById('ufErr').textContent='';
+}
+function cancelUserEdit(){STATE._userEditId=null;['uf_name','uf_username','uf_password'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('ufSaveBtn').textContent='➕ Add User';document.getElementById('ufCancelBtn').style.display='none';document.getElementById('userFormTitle').textContent='➕ Naya User / Login ID Banao';document.getElementById('ufErr').textContent='';}
+function deleteUser(id){
+  const u=LS.get('rp_users',[]).find(x=>x.id===id);
+  if(u?.role==='Owner'){alert('Owner delete nahi ho sakta!');return;}
+  if(window.confirm('Delete karo?')){LS.set('rp_users',LS.get('rp_users',[]).filter(x=>x.id!==id));renderUserSettings();}
+}
+
+function renderProfileSettings(){
+  const u=STATE.user;
+  document.getElementById('settingsContent').innerHTML=`
+  <div class="card">
+    <div class="sec-head"><span>👤 MY PROFILE</span></div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding:16px;background:${rcColor(u.role)}08;border:1px solid ${rcColor(u.role)}25;border-radius:12px">
+      <div style="width:52px;height:52px;border-radius:14px;background:${rcColor(u.role)}20;border:2px solid ${rcColor(u.role)}40;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:${rcColor(u.role)}">${(u.displayName||u.username).charAt(0).toUpperCase()}</div>
+      <div>
+        <div style="font-size:17px;font-weight:800;color:var(--text)">${u.displayName||'—'}</div>
+        <div class="mono" style="font-size:12px;color:${rcColor(u.role)};margin-top:2px">${u.role}</div>
+        <div class="mono" style="font-size:11px;color:var(--sub);margin-top:1px">@${u.username}</div>
+      </div>
+    </div>
+    <div class="grid-2 mb-16">
+      <div><div class="fld-label">Display Name</div><input class="inp" id="pf_name" value="${u.displayName||''}"/></div>
+      <div><div class="fld-label">Username</div><input class="inp" id="pf_username" value="${u.username}" placeholder="username"/></div>
+    </div>
+    <div class="divider"></div>
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;margin-top:4px">Change Password</div>
+    <div class="grid-2 mb-16">
+      <div><div class="fld-label">New Password</div><input class="inp" id="pf_pw" type="password" placeholder="Min 4 chars"/></div>
+      <div><div class="fld-label">Confirm Password</div><input class="inp" id="pf_pw2" type="password" placeholder="Dobara daalo"/></div>
+    </div>
+    <span id="pfErr" class="err-msg mb-12"></span>
+    <div class="gap-8">
+      <button class="btn btn-primary" onclick="saveProfile()">💾 Save Profile</button>
+      <span id="pfOk" style="color:var(--g);font-weight:700;display:none">✅ Saved!</span>
+    </div>
+  </div>`;
+}
+function saveProfile(){
+  const name=document.getElementById('pf_name')?.value?.trim();
+  const username=document.getElementById('pf_username')?.value?.trim();
+  const pw=document.getElementById('pf_pw')?.value;const pw2=document.getElementById('pf_pw2')?.value;
+  const errEl=document.getElementById('pfErr');
+  if(!name||!username){errEl.textContent='⚠ Name aur username zaroori!';return;}
+  if(pw&&pw.length<4){errEl.textContent='⚠ Password min 4 chars!';return;}
+  if(pw&&pw!==pw2){errEl.textContent='⚠ Passwords match nahi!';return;}
+  const allUsers=LS.get('rp_users',[]);
+  const dup=allUsers.find(u=>u.username.toLowerCase()===username.toLowerCase()&&u.id!==STATE.user.id);
+  if(dup){errEl.textContent='⚠ Username already exists!';return;}
+  const update={...STATE.user,displayName:name,username};
+  if(pw) update.password=pw;
+  LS.set('rp_users',allUsers.map(u=>u.id===STATE.user.id?update:u));
+  STATE.user=update;
+  document.getElementById('userName').textContent=name;
+  const av=document.getElementById('userAv');if(av) av.textContent=name.charAt(0).toUpperCase();
+  document.getElementById('topbarRight').innerHTML=`<span class="badge" style="background:${rcColor(update.role)}18;color:${rcColor(update.role)};border:1px solid ${rcColor(update.role)}30;font-size:11px;padding:4px 12px">${name} · ${update.role}</span>`;
+  errEl.textContent='';const ok=document.getElementById('pfOk');if(ok){ok.style.display='inline';setTimeout(()=>ok.style.display='none',2000);}
+}
+
+// ═══════════════════════════════════════════
+//  ONBOARDING
+// ═══════════════════════════════════════════
+function renderOnboarding(){
+  const steps=['Method','Contact','OTP','Company','Owner'];
+  const bar=document.getElementById('stepsBar');
+  bar.innerHTML=steps.map((s,i)=>`
+    <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+      <div class="step-dot" style="background:${i<=STATE.obStep?'linear-gradient(135deg,var(--b),var(--pu))':'var(--dim)'};border:2px solid ${i<=STATE.obStep?'var(--b)':'var(--border)'};color:${i<=STATE.obStep?'#fff':'var(--sub)'}">${i<STATE.obStep?'✓':i+1}</div>
+      <div class="step-name" style="color:${i===STATE.obStep?'var(--b)':'var(--sub)'};font-weight:${i===STATE.obStep?700:400}">${s}</div>
+    </div>
+    ${i<steps.length-1?`<div class="step-line" style="background:${i<STATE.obStep?'linear-gradient(90deg,var(--b),var(--pu))':'var(--dim)'}"></div>`:''}`
+  ).join('');
+
+  const content={
+    0:`<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:14px">Signup Method Choose Karo</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+        ${['email','mobile'].map(m=>`<div onclick="STATE.obMethod='${m}';renderOnboarding()" style="padding:18px;border-radius:12px;cursor:pointer;text-align:center;border:${STATE.obMethod===m?'2':'1'}px solid ${STATE.obMethod===m?'var(--b)':'var(--border)'};background:${STATE.obMethod===m?'rgba(0,180,255,.06)':'var(--bg3)'};transition:all .15s">
+          <div style="font-size:24px;margin-bottom:7px">${m==='email'?'📧':'📱'}</div>
+          <div style="font-weight:700;color:${STATE.obMethod===m?'var(--b)':'var(--sub)'}">${m==='email'?'Email':'Mobile Number'}</div>
+          <div style="font-size:10px;color:var(--sub);margin-top:3px">${m==='email'?'Gmail / Outlook':'WhatsApp Number'}</div>
+        </div>`).join('')}
+      </div>
+      <div class="ob-btn-row"><button class="btn btn-primary full" onclick="STATE.obStep=1;renderOnboarding()">Next →</button></div>`,
+
+    1:`<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:14px">${STATE.obMethod==='email'?'Email Daalo':'Mobile Number Daalo'}</div>
+      <div class="mb-16"><div class="fld-label">${STATE.obMethod==='email'?'Email Address':'Phone Number'}</div>
+      <div class="inp-wrap"><span class="inp-icon">${STATE.obMethod==='email'?'📧':'📱'}</span><input class="inp" id="ob_contact" value="${STATE.obContact}" placeholder="${STATE.obMethod==='email'?'you@gmail.com':'+92-300-0000000'}" oninput="STATE.obContact=this.value"/></div></div>
+      <div id="obErr1" class="err-msg mb-12"></div>
+      <div class="ob-btn-row"><button class="btn btn-ghost" onclick="STATE.obStep=0;renderOnboarding()">← Back</button>
+      <button class="btn btn-primary" style="flex:1" onclick="obSendOTP()">Send OTP 📤</button></div>`,
+
+    2:`<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:8px">OTP Verify Karo</div>
+      <div style="background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2);border-radius:9px;padding:8px 12px;margin-bottom:14px;font-size:12px;color:var(--g)">✅ Demo OTP alert mein show hua hai</div>
+      <div class="mb-16"><div class="fld-label">6-Digit OTP</div><input class="inp mono" id="ob_otp" value="${STATE.obOTP}" placeholder="Enter OTP" style="text-align:center;font-size:20px;letter-spacing:6px" oninput="STATE.obOTP=this.value"/></div>
+      <div id="obErr2" class="err-msg mb-12"></div>
+      <div class="ob-btn-row"><button class="btn btn-ghost" onclick="STATE.obStep=1;renderOnboarding()">← Back</button>
+      <button class="btn btn-primary" style="flex:1" onclick="obVerifyOTP()">Verify ✓</button></div>`,
+
+    3:`<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:14px">Company Setup Karo</div>
+      <div class="mb-12">
+        <div class="fld-label">Logo Icon</div>
+        <div class="icon-picker mb-12">${ICONS.map(ic=>`<div class="icon-pick${STATE.obCompany.icon===ic?' selected':''}" onclick="STATE.obCompany.icon='${ic}';renderOnboarding()">${ic}</div>`).join('')}</div>
+        <div class="fld-label">Brand Color</div>
+        <div class="gap-8 mb-12">${COLORS.map(c=>`<div class="color-pick${STATE.obCompany.color===c?' selected':''}" style="background:${c};box-shadow:${STATE.obCompany.color===c?`0 0 8px ${c}`:''}" onclick="STATE.obCompany.color='${c}';renderOnboarding()"></div>`).join('')}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;border:1px solid ${STATE.obCompany.color}35;background:${STATE.obCompany.color}08;margin-bottom:12px">
+        <div style="width:34px;height:34px;border-radius:9px;background:${STATE.obCompany.color}20;border:1.5px solid ${STATE.obCompany.color}45;display:flex;align-items:center;justify-content:center;font-size:17px">${STATE.obCompany.icon}</div>
+        <div><div style="font-size:14px;font-weight:800;color:var(--text)">${STATE.obCompany.name||'Company Name'}</div><div style="font-size:11px;color:var(--sub)">${STATE.obCompany.tagline||'Tagline'}</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div><div class="fld-label">Company Name *</div><input class="inp" id="ob_cname" value="${STATE.obCompany.name}" placeholder="Al-Barkat Foods" oninput="STATE.obCompany.name=this.value;renderOnboarding()"/></div>
+        <div><div class="fld-label">Tagline</div><input class="inp" id="ob_ctag" value="${STATE.obCompany.tagline}" placeholder="Quality Since 1998" oninput="STATE.obCompany.tagline=this.value"/></div>
+        <div><div class="fld-label">City</div><input class="inp" id="ob_ccity" value="${STATE.obCompany.city}" placeholder="Karachi" oninput="STATE.obCompany.city=this.value"/></div>
+        <div><div class="fld-label">Industry</div><select class="inp" onchange="STATE.obCompany.industry=this.value"><option>Food Processing</option><option>Canned Foods</option><option>Fish Processing</option><option>Dairy</option><option>Other</option></select></div>
+      </div>
+      <div id="obErr3" class="err-msg mb-12"></div>
+      <div class="ob-btn-row"><button class="btn btn-ghost" onclick="STATE.obStep=2;renderOnboarding()">← Back</button>
+      <button class="btn btn-primary" style="flex:1" onclick="obSaveCompany()">Next →</button></div>`,
+
+    4:`<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:8px">Owner Account Banao</div>
+      <div style="padding:8px 12px;border-radius:9px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);margin-bottom:14px;font-size:12px;color:var(--gold)">👑 Owner ko sabse zyada access milega</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div><div class="fld-label">Aapka Naam *</div><input class="inp" id="ob_oname" value="${STATE.obOwner.name}" placeholder="Ahmed Khan" oninput="STATE.obOwner.name=this.value"/></div>
+        <div><div class="fld-label">Username *</div><input class="inp" id="ob_ousername" value="${STATE.obOwner.username}" placeholder="ahmed.khan" oninput="STATE.obOwner.username=this.value"/></div>
+        <div><div class="fld-label">Password *</div><input class="inp" id="ob_opassword" type="password" value="${STATE.obOwner.password}" placeholder="Min 6 chars" oninput="STATE.obOwner.password=this.value"/></div>
+        <div><div class="fld-label">Confirm Password *</div><input class="inp" id="ob_oconfirm" type="password" placeholder="Dobara daalo"/></div>
+      </div>
+      <div id="obErr4" class="err-msg mb-12"></div>
+      <div class="ob-btn-row"><button class="btn btn-ghost" onclick="STATE.obStep=3;renderOnboarding()">← Back</button>
+      <button class="btn btn-gold" style="flex:1" onclick="obFinish()">🚀 Launch System!</button></div>`,
+  };
+  document.getElementById('obContent').innerHTML=content[STATE.obStep]||'';
+}
+function obSendOTP(){
+  const c=STATE.obContact;
+  if(!c){document.getElementById('obErr1').textContent='⚠ Contact daalo!';return;}
+  const code=Math.floor(100000+Math.random()*900000).toString();
+  STATE.obSentOTP=code;STATE.obStep=2;renderOnboarding();
+  setTimeout(()=>alert(`📱 Demo OTP: ${code}\n(Real app mein ${STATE.obMethod==='email'?'email':'SMS'} aayega)`),100);
+}
+function obVerifyOTP(){
+  if(STATE.obOTP===STATE.obSentOTP){STATE.obStep=3;renderOnboarding();}
+  else{document.getElementById('obErr2').textContent='⚠ Galat OTP!';}
+}
+function obSaveCompany(){
+  if(!STATE.obCompany.name.trim()){document.getElementById('obErr3').textContent='⚠ Company name zaroori!';return;}
+  STATE.obStep=4;renderOnboarding();
+}
+function obFinish(){
+  const {name,username,password}=STATE.obOwner;
+  const confirm=document.getElementById('ob_oconfirm')?.value;
+  const errEl=document.getElementById('obErr4');
+  if(!name||!username){errEl.textContent='⚠ Naam aur username zaroori!';return;}
+  if(password.length<6){errEl.textContent='⚠ Password min 6 chars!';return;}
+  if(password!==confirm){errEl.textContent='⚠ Passwords match nahi!';return;}
+  const cid=uid();
+  const co={id:cid,...STATE.obCompany};
+  const u={id:uid(),username,password,displayName:name,role:'Owner',contact:STATE.obContact,method:STATE.obMethod,companyId:cid};
+  LS.set('rp_companies',[...LS.get('rp_companies',[]),co]);
+  LS.set('rp_users',[...LS.get('rp_users',[]),u]);
+  STATE.user=u;STATE.company=co;
+  STATE.batches=LS.get(`rp_bat_${cid}`,DEF_BATCHES);
+  STATE.ranges=LS.get(`rp_rng_${cid}`,DEF_RANGES);
+  STATE.plan=LS.get('rp_plan','pro');
+  initApp();showPage('app');navigate('dashboard');
+}
+
+// ═══════════════════════════════════════════
+//  START
+// ═══════════════════════════════════════════
+init();
+</script>
+</body>
+</html>
